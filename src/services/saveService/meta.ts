@@ -86,7 +86,7 @@ export function defaultMeta(): MetaState {
   return {
     version: SAVE_VERSION,
     coins: 0,
-    tickets: 0,
+    tickets: 1000,
     fragments: 0,
     accountXp: 0,
     upgrades: {},
