@@ -27,22 +27,31 @@ from PIL import Image
 
 
 def remove_bg(im):
-    """Los fotogramas vienen en RGB con fondo blanco (o casi). Lo volvemos
-    transparente con un flood fill desde los bordes, para NO borrar los blancos
-    internos (ojos, gi de Freezer, destellos dentro del personaje)."""
+    """Los fotogramas vienen en RGB con un fondo de color sólido (normalmente
+    blanco, a veces gris claro u otro tono). Lo volvemos transparente con un
+    flood fill desde los bordes usando como referencia el COLOR REAL de las
+    esquinas, con tolerancia. Así no dependemos de que el fondo sea blanco puro
+    y NO borramos los colores internos del personaje (ojos, gi, destellos)."""
     im = im.convert("RGBA")
     w, h = im.size
     px = im.load()
 
+    # Color de fondo = el más repetido entre las cuatro esquinas.
+    corners = [px[0, 0], px[w - 1, 0], px[0, h - 1], px[w - 1, h - 1]]
+    from collections import Counter
+    bg = Counter((c[0], c[1], c[2]) for c in corners).most_common(1)[0][0]
+
+    tol = 36  # tolerancia por canal
+
     def is_bg(c):
-        return c[0] > 244 and c[1] > 244 and c[2] > 244
+        return abs(c[0] - bg[0]) <= tol and abs(c[1] - bg[1]) <= tol and abs(c[2] - bg[2]) <= tol
 
     from collections import deque
     seen = [[False] * w for _ in range(h)]
     q = deque()
     for x in range(w):
         for y in (0, h - 1):
-            if is_bg(px[x, y]):
+            if is_bg(px[x, y]) and not seen[y][x]:
                 q.append((x, y)); seen[y][x] = True
     for y in range(h):
         for x in (0, w - 1):
