@@ -133,7 +133,7 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
             >
               {meta.favorites.includes(c.id) && <span className="absolute right-1 top-0 text-[10px] text-amber-300">★</span>}
               <div className={`flex justify-center ${has ? '' : 'brightness-0 opacity-50'}`}>
-                <CharacterPreview spec={c.sprite} scale={3} label={has ? c.name : 'Silueta'} />
+                <CharacterPreview spec={c.sprite} textureKey={`char_${c.id}`} scale={3} label={has ? c.name : 'Silueta'} />
               </div>
               <div className="text-[9px] text-amber-300">{'★'.repeat(c.stars)}</div>
               <div className="truncate text-[10px] font-bold">{has ? c.name : '???'}</div>
@@ -149,7 +149,7 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
           <div className="relative flex gap-4">
             <div className="flex flex-col items-center gap-2">
               <div className={owned ? '' : 'brightness-0 opacity-60'} style={owned && char.aura ? { filter: `drop-shadow(0 0 12px ${hexColor(char.aura)})` } : undefined}>
-                <CharacterPreview spec={char.sprite} scale={6} label={char.name} />
+                <CharacterPreview spec={char.sprite} textureKey={`char_${char.id}`} scale={6} label={char.name} />
               </div>
               <DragonBall stars={char.stars} size={44} />
             </div>
@@ -234,7 +234,7 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
                   return (
                     <div key={f.id} className="w-28 rounded-xl border border-slate-700 p-1 text-center">
                       <div className="flex justify-center" style={{ filter: `drop-shadow(0 0 6px ${hexColor(f.aura)})` }}>
-                        <CharacterPreview spec={spec} scale={2} label={f.name} />
+                        <CharacterPreview spec={spec} textureKey={`char_${char.id}_${f.id}`} scale={2} label={f.name} />
                       </div>
                       <div className="text-[11px] font-bold" style={{ color: hexColor(f.aura) }}>
                         {f.name}

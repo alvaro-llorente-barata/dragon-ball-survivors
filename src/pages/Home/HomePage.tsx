@@ -20,7 +20,7 @@ export function HomePage({ go }: { go: (s: Screen) => void }) {
       </div>
 
       <div className="relative">
-        <CharacterPreview spec={goku.sprite} frame={0} scale={7} label="Goku" />
+        <CharacterPreview spec={goku.sprite} textureKey={`char_${goku.id}`} frame={0} scale={7} label="Goku" />
       </div>
 
       <div className="relative flex w-full max-w-xs flex-col gap-3">

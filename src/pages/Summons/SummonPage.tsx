@@ -94,7 +94,7 @@ function Reveal({ result, saga, index, total, onNext, onSkip }: { result: Summon
           <div className="relative flex h-64 w-64 items-center justify-center">
             <div className="ball-flash absolute h-64 w-64 rounded-full" style={{ background: `radial-gradient(circle, ${glow} 0%, transparent 70%)` }} />
             <div className="pop-in float-y relative" style={{ filter: `drop-shadow(0 0 ${legendary ? 30 : 16}px ${glow})` }}>
-              <CharacterPreview spec={char.sprite} scale={8} label={char.name} />
+              <CharacterPreview spec={char.sprite} textureKey={`char_${char.id}`} scale={8} label={char.name} />
             </div>
           </div>
           <div className="pop-in mt-2">
@@ -231,7 +231,7 @@ export function SummonPage({ go }: { go: (s: Screen) => void }) {
               return (
                 <div key={i} className="rounded-xl border p-1 text-center" style={{ borderColor: STAR_GLOW[r.stars] }}>
                   <div className="flex justify-center">
-                    <CharacterPreview spec={c.sprite} scale={2} label={c.name} />
+                    <CharacterPreview spec={c.sprite} textureKey={`char_${c.id}`} scale={2} label={c.name} />
                   </div>
                   <div className="text-[10px] text-amber-300">{'★'.repeat(r.stars)}</div>
                   <div className="truncate text-[10px] font-bold">{c.name}</div>
@@ -253,7 +253,7 @@ export function SummonPage({ go }: { go: (s: Screen) => void }) {
               return (
                 <div key={c.id} className="rounded-xl border border-slate-700 p-2 text-center">
                   <div className={`flex justify-center ${owned ? '' : 'brightness-0 opacity-60'}`}>
-                    <CharacterPreview spec={c.sprite} scale={3} label={owned ? c.name : 'Personaje bloqueado'} />
+                    <CharacterPreview spec={c.sprite} textureKey={`char_${c.id}`} scale={3} label={owned ? c.name : 'Personaje bloqueado'} />
                   </div>
                   <div className="text-xs text-amber-300">{'★'.repeat(c.stars)}</div>
                   <div className="text-[11px] font-bold">{owned ? c.name : '???'}</div>
