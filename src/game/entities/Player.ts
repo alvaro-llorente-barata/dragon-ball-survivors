@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { DEPTH } from '../constants';
+import { isRealSheet } from '../art/textures';
 
 type Dir = 'down' | 'up' | 'side';
 
@@ -12,6 +13,8 @@ export class Player {
   facing = new Phaser.Math.Vector2(1, 0);
   private dir: Dir = 'down';
   private textureKey: string;
+  private real: boolean;
+  private faceLeft = false;
   private attackUntil = 0;
   invulnUntil = 0;
   dodgeReadyAt = 0;
@@ -24,12 +27,10 @@ export class Player {
     textureKey: string,
   ) {
     this.textureKey = textureKey;
+    this.real = isRealSheet(textureKey);
     this.aura = scene.add.image(x, y, 'aura').setBlendMode('ADD').setVisible(false).setScale(1.6);
-    this.sprite = scene.physics.add.sprite(x, y, textureKey, '0');
-    this.sprite.setScale(2);
-    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    body.setSize(10, 7);
-    body.setOffset(5, 16);
+    this.sprite = scene.physics.add.sprite(x, y, textureKey, 0);
+    this.applyFrameShape(1);
     this.auraSparks = scene.add.particles(0, 0, 'spark', {
       follow: this.sprite,
       followOffset: { x: 0, y: 10 },
@@ -53,19 +54,42 @@ export class Player {
     return this.sprite.y;
   }
 
+  /**
+   * Ajusta escala y caja de colisión según el tipo de hoja:
+   * - chibi (20x24): como siempre, escala 2.
+   * - real (tamaño variable): se escala para dar ~48 px de alto en pantalla y
+   *   la caja de colisión se coloca en la base (pies) del fotograma.
+   */
+  private applyFrameShape(mult: number): void {
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    if (this.real) {
+      const fh = this.sprite.height || 48;
+      const fw = this.sprite.width || 40;
+      const scale = (48 / fh) * mult;
+      this.sprite.setScale(scale);
+      const cw = Math.max(8, fw * 0.32);
+      const ch = Math.max(6, fh * 0.16);
+      body.setSize(cw, ch);
+      body.setOffset((fw - cw) / 2, fh - ch - 2);
+    } else {
+      this.sprite.setScale(2 * mult);
+      body.setSize(10 / mult, 7 / mult);
+      body.setOffset(10 - 5 / mult, 23 - 7 / mult);
+    }
+    this.aura.setData('mult', mult);
+  }
+
   /** Tamaño del personaje (niños 0.8, Broly 1.3, Ozaru 2.2). La caja de colisión se mantiene. */
   setBaseScale(mult: number): void {
-    this.sprite.setScale(2 * mult);
-    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
-    body.setSize(10 / mult, 7 / mult);
-    body.setOffset(10 - 5 / mult, 23 - 7 / mult);
-    this.aura.setData('mult', mult);
+    this.applyFrameShape(mult);
   }
 
   setTextureKey(key: string): void {
     this.textureKey = key;
-    this.sprite.setTexture(key, '0');
+    this.real = isRealSheet(key);
+    this.sprite.setTexture(key, 0);
     this.sprite.anims.stop();
+    this.applyFrameShape((this.aura.getData('mult') as number | undefined) ?? 1);
   }
 
   setAura(color: number | null, lightning: boolean): void {
@@ -93,9 +117,10 @@ export class Player {
       if (m.lengthSq() > 1) m.normalize();
       body.setVelocity(m.x * speed, m.y * speed);
       this.facing.copy(m).normalize();
+      if (Math.abs(m.x) > 0.1) this.faceLeft = m.x < 0;
       if (Math.abs(m.x) > Math.abs(m.y) * 0.6) {
         this.dir = 'side';
-        this.sprite.setFlipX(m.x < 0);
+        if (!this.real) this.sprite.setFlipX(m.x < 0);
       } else {
         this.dir = m.y < 0 ? 'up' : 'down';
       }
@@ -103,7 +128,19 @@ export class Player {
       body.setVelocity(0, 0);
     }
 
-    if (now < this.attackUntil) {
+    if (this.real) {
+      // Hoja lateral: idle / andar / atacar, orientada por el eje X.
+      if (Math.abs(this.facing.x) > 0.05) this.faceLeft = this.facing.x < 0;
+      this.sprite.setFlipX(this.faceLeft);
+      if (now < this.attackUntil) {
+        this.sprite.anims.play(`${this.textureKey}_atk`, true);
+      } else if (moving) {
+        this.sprite.anims.play(`${this.textureKey}_walk`, true);
+        this.sprite.anims.timeScale = speed / 160;
+      } else {
+        this.sprite.anims.play(`${this.textureKey}_idle`, true);
+      }
+    } else if (now < this.attackUntil) {
       this.sprite.anims.stop();
       this.sprite.setFrame('6');
       this.sprite.setFlipX(this.facing.x < 0);

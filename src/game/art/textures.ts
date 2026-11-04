@@ -6,8 +6,38 @@ import { CHEST_RARITIES } from '../logic/loot';
 import { T, TILE, TILE_COUNT, terrainAt } from '../logic/chunkgen';
 import { mulberry32 } from '../logic/rng';
 import { FRAME_COUNT, FRAME_H, FRAME_W, drawCharacterSheet } from './chibi';
+import { realSheet } from '../../assets/realSheets';
 
 /** Todas las texturas se generan por código: arte original y sin imágenes rotas. */
+
+/**
+ * Crea las animaciones de una hoja REAL de vista lateral (4 fotogramas:
+ * 0 idle, 1-2 andar, 3 atacar). El personaje mira a la derecha y el motor
+ * lo voltea en X. Devuelve true si la clave tenía hoja real.
+ */
+export function characterTextureReal(scene: Phaser.Scene, key: string): boolean {
+  const sheet = realSheet(key);
+  if (!sheet) return false;
+  if (!scene.textures.exists(key)) return false; // debe haberse precargado en BootScene
+  const mk = (name: string, frames: number[], rate: number, repeat: number) => {
+    const animKey = `${key}_${name}`;
+    if (scene.anims.exists(animKey)) return;
+    scene.anims.create({
+      key: animKey,
+      frames: frames.map((f) => ({ key, frame: f })),
+      frameRate: rate,
+      repeat,
+    });
+  };
+  mk('idle', [0], 1, -1);
+  mk('walk', [0, 1, 0, 2], 8, -1);
+  mk('atk', [3], 1, 0);
+  return true;
+}
+
+export function isRealSheet(key: string): boolean {
+  return !!realSheet(key);
+}
 
 type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number) => void;
 
@@ -28,6 +58,11 @@ const hex = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
  * (por ejemplo, un PNG cargado desde src/assets/manifest.ts), se usa esa y solo se crean las animaciones.
  */
 export function characterTexture(scene: Phaser.Scene, key: string, spec: SpriteSpec): void {
+  // Si hay hoja real precargada para esta clave, usa animaciones laterales.
+  if (isRealSheet(key) && scene.textures.exists(key)) {
+    characterTextureReal(scene, key);
+    return;
+  }
   if (!scene.textures.exists(key)) {
     const tex = scene.textures.createCanvas(key, FRAME_W * FRAME_COUNT, FRAME_H);
     if (!tex) return;
