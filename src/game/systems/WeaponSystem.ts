@@ -7,7 +7,7 @@ import type { Enemy } from '../entities/Enemy';
 import { pointInArc, pointInBeam, rollDamage } from '../logic/combat';
 import type { PlayerStats } from '../logic/stats';
 import type { GameScene } from '../scenes/GameScene';
-import type { Destructible } from '../world/WorldBuilder';
+import type { Destructible } from '../world/InfiniteWorld';
 
 export class Shot extends Phaser.Physics.Arcade.Image {
   weaponId = '';
@@ -414,9 +414,10 @@ export class WeaponSystem {
       this.scene.effects.debris(d.img.x, d.img.y - 12, 0x8a7a6a, 14);
       this.scene.effects.smoke(d.img.x, d.img.y - 10, 0xbbbbbb, 6);
       audio.play('explode');
-      d.zone.destroy();
-      d.img.destroy();
-      this.scene.loot.onDestructibleBroken(d.img.x, d.img.y - 10);
+      const x = d.img.x;
+      const y = d.img.y - 10;
+      this.scene.world.breakDestructible(d);
+      this.scene.loot.onDestructibleBroken(x, y);
     }
   }
 

@@ -9,7 +9,6 @@ export interface RunState {
   ki: number;
   weapons: Record<string, number>;
   passives: Record<string, number>;
-  formId: string;
   buffs: Partial<Record<BuffId, number>>;
   shieldHits: number;
   kills: number;
@@ -35,7 +34,6 @@ export function createRunState(char: CharacterDef, maxHp: number, maxKi: number,
     ki: Math.round(maxKi * 0.5),
     weapons: { [char.startingWeapon]: 1 },
     passives: {},
-    formId: char.transformations[0]?.id ?? 'base',
     buffs: {},
     shieldHits: 0,
     kills: 0,

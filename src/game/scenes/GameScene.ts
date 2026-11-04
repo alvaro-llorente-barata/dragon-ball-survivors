@@ -14,10 +14,9 @@ import type { Enemy } from '../entities/Enemy';
 import { Player } from '../entities/Player';
 import { damageTaken } from '../logic/combat';
 import type { Reward } from '../logic/loot';
-import { generateMap } from '../logic/mapgen';
+import { SPAWN_TILE, TILE, worldSeed } from '../logic/chunkgen';
 import { addBuff, addXp, createRunState, tickBuffs, xpForLevel, type RunState } from '../logic/run';
-import { baseMaxHp, computeStats, getForm, type PlayerStats } from '../logic/stats';
-import { drainForm, nextForm, tryTransform } from '../logic/transform';
+import { baseMaxHp, computeStats, type PlayerStats } from '../logic/stats';
 import { applyChoice, generateChoices, type UpgradeChoice } from '../logic/upgrades';
 import { BossSystem } from '../systems/BossSystem';
 import { Effects } from '../systems/Effects';
@@ -26,9 +25,10 @@ import { EventSystem } from '../systems/EventSystem';
 import { LootSystem, rewardLabel } from '../systems/LootSystem';
 import { TelegraphSystem } from '../systems/TelegraphSystem';
 import { WeaponSystem, type Shot } from '../systems/WeaponSystem';
-import { WorldBuilder, type Destructible } from '../world/WorldBuilder';
+import { InfiniteWorld, type Destructible } from '../world/InfiniteWorld';
 
-type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'SPACE' | 'Q' | 'E' | 'ESC', Phaser.Input.Keyboard.Key>;
+type Keys = Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'SPACE' | 'Q' | 'ESC', Phaser.Input.Keyboard.Key>;
+const MINIMAP_EXTENT = 1600;
 
 const BUFF_LABELS: Record<BuffId, string> = {
   power: 'Daño x1.5',
@@ -44,7 +44,7 @@ export class GameScene extends Phaser.Scene {
   mapDef!: MapDef;
   run!: RunState;
   stats!: PlayerStats;
-  world!: WorldBuilder;
+  world!: InfiniteWorld;
   player!: Player;
   enemies!: EnemySystem;
   weapons!: WeaponSystem;
@@ -61,9 +61,11 @@ export class GameScene extends Phaser.Scene {
   private hudTimer = 0;
   private miniTimer = 0;
   private lastMaxHp = 0;
-  private pending = { dodge: false, ultimate: false, transform: false };
+  private pending = { dodge: false, ultimate: false };
   private reasonToastAt = 0;
   private minimapBg = '';
+  private minimapCenter = { x: Number.NaN, y: Number.NaN };
+  private regenAcc = 0;
 
   constructor() {
     super('game');
@@ -77,29 +79,30 @@ export class GameScene extends Phaser.Scene {
     this.activeModal = null;
     this.modalQueue = [];
 
-    const gen = generateMap(this.mapDef, this.cfg.seed);
-    this.world = new WorldBuilder(this, this.mapDef, gen, `tiles_${this.mapDef.id}`);
-    this.physics.world.setBounds(0, 0, this.world.worldSize, this.world.worldSize);
-    this.minimapBg = minimapImage(gen.tiles, this.mapDef);
-
     const maxHp = baseMaxHp(this.char, this.cfg.meta);
     this.run = createRunState(this.char, maxHp, this.char.stats.ki, this.cfg.meta.revives);
     this.stats = computeStats(this.char, this.run, this.cfg.meta);
     this.lastMaxHp = this.stats.maxHp;
 
+    // Mundo infinito por trozos (se cargan alrededor del jugador).
+    this.world = new InfiniteWorld(this, this.mapDef, worldSeed(this.mapDef, this.cfg.seed), `tiles_${this.mapDef.id}`);
+    const spawnX = SPAWN_TILE.x * TILE + TILE / 2;
+    const spawnY = SPAWN_TILE.y * TILE + TILE / 2;
+
     this.effects = new Effects(this, this.cfg.settings.particles, this.cfg.settings.damageNumbers);
     this.telegraphs = new TelegraphSystem(this);
-    this.player = new Player(this, gen.spawn.x, gen.spawn.y, `char_${this.char.id}`);
+    this.player = new Player(this, spawnX, spawnY, `char_${this.char.id}`);
+    if (this.char.aura) this.player.setAura(this.char.aura, !!this.char.lightning);
     this.enemies = new EnemySystem(this);
-    this.loot = new LootSystem(this, gen);
+    this.loot = new LootSystem(this);
     this.weapons = new WeaponSystem(this);
     this.bosses = new BossSystem(this);
     this.randomEvents = new EventSystem(this);
+    this.world.update(spawnX, spawnY);
 
-    // Colisiones
+    // Colisiones (las capas de agua se conectan al cargar cada trozo)
     this.physics.add.collider(this.player.sprite, this.world.obstacles);
     this.physics.add.collider(this.player.sprite, this.world.destructibleGroup);
-    this.physics.add.collider(this.player.sprite, this.world.layer);
     this.physics.add.overlap(this.weapons.shots, this.enemies.group, (a, b) =>
       this.weapons.onShotHit(a as unknown as Shot, b as unknown as Enemy),
     );
@@ -120,7 +123,6 @@ export class GameScene extends Phaser.Scene {
 
     // Cámara
     const cam = this.cameras.main;
-    cam.setBounds(0, 0, this.world.worldSize, this.world.worldSize);
     cam.startFollow(this.player.sprite, true, 0.12, 0.12);
     cam.setBackgroundColor(this.mapDef.palette.sky);
     cam.setRoundPixels(true);
@@ -130,12 +132,11 @@ export class GameScene extends Phaser.Scene {
     // Entrada
     const kb = this.input.keyboard;
     if (kb) {
-      this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,Q,E,ESC') as Keys;
+      this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,Q,ESC') as Keys;
       kb.on('keydown-ESC', () => this.openPause());
       // Eventos (no sondeo): una pulsación muy corta tampoco se pierde.
       kb.on('keydown-SPACE', () => (this.pending.dodge = true));
       kb.on('keydown-Q', () => (this.pending.ultimate = true));
-      kb.on('keydown-E', () => (this.pending.transform = true));
     }
     this.game.events.on(Phaser.Core.Events.BLUR, this.onBlur, this);
 
@@ -149,7 +150,6 @@ export class GameScene extends Phaser.Scene {
       abandon: () => this.endRun('abandon'),
       dodge: () => (this.pending.dodge = true),
       ultimate: () => (this.pending.ultimate = true),
-      transform: () => (this.pending.transform = true),
     };
     bridge.commands = commands;
 
@@ -195,12 +195,15 @@ export class GameScene extends Phaser.Scene {
 
     this.handleInput(time);
 
-    // Ki: se regenera en forma base y se consume transformado.
-    if (getForm(this.char, this.run.formId).kiDrain > 0) {
-      if (drainForm(this.char, this.run, dt)) this.onFormChanged(true);
-    } else {
-      this.run.ki = Math.min(this.stats.maxKi, this.run.ki + this.stats.kiRegen * dt);
+    this.run.ki = Math.min(this.stats.maxKi, this.run.ki + this.stats.kiRegen * dt);
+    if (this.stats.regen > 0) {
+      this.regenAcc += this.stats.regen * dt;
+      if (this.regenAcc >= 1) {
+        this.run.hp = Math.min(this.stats.maxHp, this.run.hp + Math.floor(this.regenAcc));
+        this.regenAcc -= Math.floor(this.regenAcc);
+      }
     }
+    this.world.update(this.player.x, this.player.y);
 
     for (const b of tickBuffs(this.run, dt)) this.toast(`${BUFF_LABELS[b]}: terminado`, '#aaaaaa');
 
@@ -245,10 +248,6 @@ export class GameScene extends Phaser.Scene {
         this.reasonToast(this.weapons.ultimateCooldownFraction() > 0 ? `${def.name} se está recargando` : `Necesitas ${def.ultimate?.kiCost ?? 0} de Ki`);
       }
     }
-    if (this.pending.transform) {
-      this.pending.transform = false;
-      this.tryTransformation();
-    }
   }
 
   private reasonToast(text: string): void {
@@ -284,42 +283,6 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private tryTransformation(): void {
-    const check = nextForm(this.char, this.run, this.cfg.everDefeated);
-    if (!check) {
-      this.reasonToast('Ya estás en tu forma más poderosa');
-      return;
-    }
-    if (!check.ready) {
-      this.reasonToast(`${check.form.name}: ${check.reason}`);
-      return;
-    }
-    tryTransform(this.char, this.run, this.cfg.everDefeated);
-    this.onFormChanged(false);
-  }
-
-  private onFormChanged(reverted: boolean): void {
-    const form = getForm(this.char, this.run.formId);
-    const p = this.player;
-    p.setTextureKey(form.sprite ? `char_${this.char.id}_${form.id}` : `char_${this.char.id}`);
-    if (form.id === this.char.transformations[0].id) {
-      p.setAura(null, false);
-      p.sprite.clearTint();
-      if (reverted) this.toast('Sin Ki: vuelves a tu forma base', '#bbbbbb');
-      return;
-    }
-    p.setAura(form.aura, form.id === 'ssj2');
-    if (form.id === 'kaioken') p.sprite.setTint(0xffb0b0);
-    else p.sprite.clearTint();
-    // Efecto de transformación: destello, onda que empuja y daña, invulnerabilidad breve.
-    this.effects.flash(form.aura, 300);
-    this.effects.explosion(p.x, p.y, 150, form.aura, 0.01);
-    this.enemies.damageInCircle(p.x, p.y, 150, () => ({ amount: Math.round(25 * this.stats.energyMul), crit: false }), 420);
-    p.invulnUntil = this.time.now + 1000;
-    audio.play('transform');
-    this.toast(`¡${form.name}!`, '#' + form.aura.toString(16).padStart(6, '0'), true);
-  }
-
   // ---------- Jugador ----------
 
   damagePlayer(amount: number): void {
@@ -331,6 +294,13 @@ export class GameScene extends Phaser.Scene {
       this.run.shieldHits -= 1;
       p.invulnUntil = now + 350;
       this.effects.ring(p.x, p.y, 40, 0x8ab4ff, 250);
+      return;
+    }
+    if (this.stats.dodgeChance > 0 && Math.random() < this.stats.dodgeChance) {
+      // Ultra Instinto: esquiva automática con imagen residual.
+      p.invulnUntil = now + 300;
+      this.effects.floatText(p.x, p.y - 30, 'Esquiva', '#d8e0ff');
+      this.effects.sparks(p.x, p.y, 0xd8e0ff, 6);
       return;
     }
     const dmg = damageTaken(amount, this.stats.defense);
@@ -377,8 +347,6 @@ export class GameScene extends Phaser.Scene {
     if (levels > 0) {
       audio.play('levelup');
       this.effects.ring(this.player.x, this.player.y, 90, 0xffd84a, 500);
-      const check = nextForm(this.char, this.run, this.cfg.everDefeated);
-      if (check && this.run.level === check.form.minLevel) this.toast(`Nueva transformación disponible: ${check.form.name} (E)`, '#ffd84a', true);
     }
   }
 
@@ -516,7 +484,8 @@ export class GameScene extends Phaser.Scene {
       kills: this.run.kills,
       level: this.run.level,
       coins: this.run.coins,
-      tickets: this.run.tickets,
+      // 1 ticket extra por cada 3 minutos sobrevividos
+      tickets: this.run.tickets + Math.floor(this.run.time / 180),
       fragments: this.run.fragments,
       chestsOpened: this.run.chestsOpened,
       bossesDefeated: [...this.run.bossesDefeated],
@@ -546,8 +515,6 @@ export class GameScene extends Phaser.Scene {
   private pushHud(): void {
     const run = this.run;
     const s = this.stats;
-    const form = getForm(this.char, run.formId);
-    const nf = nextForm(this.char, run, this.cfg.everDefeated);
     const ult = getWeapon(this.char.ultimate);
     const boss = this.bosses.current();
     const p = this.player;
@@ -576,9 +543,9 @@ export class GameScene extends Phaser.Scene {
         return { id, name: w.name, level, max: w.levels.length };
       }),
       passives: Object.entries(run.passives).map(([id, level]) => ({ id, name: PASSIVES[id].name, level, max: PASSIVES[id].maxLevel })),
-      formName: form.name,
-      formColor: form.aura,
-      nextForm: nf ? { name: nf.form.name, ready: nf.ready, reason: nf.reason, kiCost: nf.form.kiCost } : null,
+      charName: this.char.name,
+      stars: this.char.stars,
+      auraColor: this.char.aura ?? 0xffffff,
       ultimate: {
         name: ult.name,
         kiCost: ult.ultimate?.kiCost ?? 0,
@@ -608,9 +575,18 @@ export class GameScene extends Phaser.Scene {
 
   private pushMinimap(): void {
     const boss = this.bosses.current();
+    // El fondo del minimapa se regenera cuando el jugador se aleja del último centro.
+    const c = this.minimapCenter;
+    if (Number.isNaN(c.x) || Math.hypot(this.player.x - c.x, this.player.y - c.y) > MINIMAP_EXTENT * 0.35) {
+      c.x = Math.round(this.player.x);
+      c.y = Math.round(this.player.y);
+      this.minimapBg = minimapImage(this.mapDef, this.world.seed, c.x, c.y, MINIMAP_EXTENT, 80);
+    }
     useRunStore.getState().setMinimap({
       bg: this.minimapBg,
-      worldSize: this.world.worldSize,
+      cx: c.x,
+      cy: c.y,
+      extent: MINIMAP_EXTENT,
       player: { x: this.player.x, y: this.player.y },
       pois: this.loot.pois.filter((p) => p.discovered).map((p) => ({ x: p.x, y: p.y, type: p.type })),
       chests: this.loot.knownChests().map((c) => ({ x: c.img.x, y: c.img.y, rarity: c.rarity })),

@@ -70,8 +70,8 @@ export class EventSystem {
       let y = p.y;
       for (let i = 0; i < 20; i++) {
         const a = Math.random() * Math.PI * 2;
-        x = Phaser.Math.Clamp(p.x + Math.cos(a) * 650, 200, this.scene.world.worldSize - 200);
-        y = Phaser.Math.Clamp(p.y + Math.sin(a) * 650, 200, this.scene.world.worldSize - 200);
+        x = p.x + Math.cos(a) * 650;
+        y = p.y + Math.sin(a) * 650;
         if (!this.scene.world.isBlocked(x, y)) break;
       }
       this.scene.loot.spawnChest(x, y, 'legendary', false, true);

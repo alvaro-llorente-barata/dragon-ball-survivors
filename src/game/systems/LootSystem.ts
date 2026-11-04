@@ -4,7 +4,7 @@ import type { CapsuleKind, ChestRarity, ItemKind } from '../../data/types';
 import { audio } from '../../services/audioService';
 import { DEPTH, MAX_GEMS } from '../constants';
 import { CHEST_RARITIES, rollCapsule, rollChestRarity, rollChestRewards, rollEnemyDrop, type Reward } from '../logic/loot';
-import type { GeneratedMap, PoiSpec } from '../logic/mapgen';
+import type { ChunkData, PoiSpec } from '../logic/chunkgen';
 import type { GameScene } from '../scenes/GameScene';
 import type { ChestRewardView } from '../../stores/runStore';
 
@@ -16,19 +16,25 @@ interface Gem {
   coin: boolean;
 }
 
-interface Pickup {
+/** id/chunk: solo para lo generado con el mapa (null = soltado por enemigos o eventos) */
+interface Owned {
+  id: string | null;
+  chunk: string | null;
+}
+
+interface Pickup extends Owned {
   img: Phaser.GameObjects.Image;
   kind: ItemKind;
   alive: boolean;
 }
 
-interface Capsule {
+interface Capsule extends Owned {
   img: Phaser.GameObjects.Image;
   kind: CapsuleKind;
   alive: boolean;
 }
 
-export interface Chest {
+export interface Chest extends Owned {
   img: Phaser.GameObjects.Image;
   glow: Phaser.GameObjects.Image | null;
   sparkle: Phaser.GameObjects.Particles.ParticleEmitter | null;
@@ -44,6 +50,7 @@ interface Altar {
   ring: Phaser.GameObjects.Graphics;
   progress: number;
   used: boolean;
+  chunk: string;
 }
 
 const GEM_TINTS: [number, number][] = [
@@ -60,32 +67,70 @@ export class LootSystem {
   private activeGems: Gem[] = [];
   private pickups: Pickup[] = [];
   private capsules: Capsule[] = [];
-  readonly chests: Chest[] = [];
+  chests: Chest[] = [];
   private altars: Altar[] = [];
   private magnetAll = false;
-  readonly pois: (PoiSpec & { discovered: boolean; guarded: boolean })[];
+  /** POI conocidos (se conservan aunque su trozo se descargue) */
+  readonly pois: (PoiSpec & { discovered: boolean; guarded: boolean })[] = [];
+  private poiIds = new Set<string>();
   private discoverTimer = 0;
+  private cleanupTimer = 0;
 
-  constructor(
-    private scene: GameScene,
-    gen: GeneratedMap,
-  ) {
+  constructor(private scene: GameScene) {
     for (let i = 0; i < MAX_GEMS; i++) {
       const img = scene.add.image(0, 0, 'gem').setVisible(false).setDepth(DEPTH.pickup);
       const g: Gem = { img, value: 0, magnet: false, active: false, coin: false };
       this.gems.push(g);
       this.freeGems.push(g);
     }
-    for (const c of gen.chests) this.spawnChest(c.x, c.y, c.rarity, c.hidden, false);
-    for (const c of gen.capsules) this.spawnCapsule(c.x, c.y, c.kind);
-    for (const it of gen.items) this.spawnPickup(it.x, it.y, it.kind);
-    this.pois = gen.pois.map((p) => ({ ...p, discovered: false, guarded: false }));
-    for (const poi of gen.pois) {
-      if (poi.type !== 'altar') continue;
-      const img = scene.add.image(poi.x, poi.y + 16, 'altar').setOrigin(0.5, 1).setDepth(DEPTH.entity + poi.y);
-      const ring = scene.add.graphics().setDepth(DEPTH.telegraph);
-      this.altars.push({ poi, img, ring, progress: 0, used: false });
+  }
+
+  /** Crea el contenido de un trozo de mapa recién cargado. */
+  loadChunk(data: ChunkData, consumed: ReadonlySet<string>): void {
+    for (const c of data.chests) if (!consumed.has(c.id)) this.spawnChest(c.x, c.y, c.rarity, c.hidden, false, c.id, data.key);
+    for (const c of data.capsules) if (!consumed.has(c.id)) this.spawnCapsule(c.x, c.y, c.kind, c.id, data.key);
+    for (const it of data.items) if (!consumed.has(it.id)) this.spawnPickup(it.x, it.y, it.kind, it.id, data.key);
+    for (const poi of data.pois) {
+      if (!this.poiIds.has(poi.id)) {
+        this.poiIds.add(poi.id);
+        this.pois.push({ ...poi, discovered: false, guarded: false });
+      }
+      if (poi.type === 'altar' && !consumed.has(poi.id)) {
+        const img = this.scene.add.image(poi.x, poi.y + 16, 'altar').setOrigin(0.5, 1).setDepth(DEPTH.entity + poi.y);
+        const ring = this.scene.add.graphics().setDepth(DEPTH.telegraph);
+        this.altars.push({ poi, img, ring, progress: 0, used: false, chunk: data.key });
+      }
     }
+  }
+
+  /** Libera lo que no se ha recogido de un trozo que queda lejos (volverá a aparecer). */
+  unloadChunk(key: string): void {
+    for (const p of this.pickups) if (p.chunk === key && p.alive) this.destroyImg(p.img);
+    this.pickups = this.pickups.filter((p) => p.chunk !== key && p.alive);
+    for (const c of this.capsules) if (c.chunk === key && c.alive) this.destroyImg(c.img);
+    this.capsules = this.capsules.filter((c) => c.chunk !== key && c.alive);
+    for (const c of this.chests)
+      if (c.chunk === key) {
+        this.destroyImg(c.img);
+        if (c.glow) this.destroyImg(c.glow);
+        c.sparkle?.destroy();
+      }
+    this.chests = this.chests.filter((c) => c.chunk !== key);
+    for (const a of this.altars)
+      if (a.chunk === key) {
+        a.img.destroy();
+        a.ring.destroy();
+      }
+    this.altars = this.altars.filter((a) => a.chunk !== key);
+  }
+
+  private destroyImg(img: Phaser.GameObjects.Image): void {
+    this.scene.tweens.killTweensOf(img);
+    img.destroy();
+  }
+
+  private consume(id: string | null): void {
+    if (id) this.scene.world.consumed.add(id);
   }
 
   // ---------- creación ----------
@@ -109,19 +154,27 @@ export class LootSystem {
     this.activeGems.push(g);
   }
 
-  spawnPickup(x: number, y: number, kind: ItemKind): void {
+  spawnPickup(x: number, y: number, kind: ItemKind, id: string | null = null, chunk: string | null = null): void {
     const img = this.scene.add.image(x, y, `item_${kind}`).setDepth(DEPTH.pickup + 1);
     this.scene.tweens.add({ targets: img, y: y - 4, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    this.pickups.push({ img, kind, alive: true });
+    this.pickups.push({ img, kind, alive: true, id, chunk });
   }
 
-  spawnCapsule(x: number, y: number, kind: CapsuleKind): void {
+  spawnCapsule(x: number, y: number, kind: CapsuleKind, id: string | null = null, chunk: string | null = null): void {
     const img = this.scene.add.image(x, y, `capsule_${kind}`).setDepth(DEPTH.pickup + 1);
     this.scene.tweens.add({ targets: img, angle: { from: -8, to: 8 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    this.capsules.push({ img, kind, alive: true });
+    this.capsules.push({ img, kind, alive: true, id, chunk });
   }
 
-  spawnChest(x: number, y: number, rarity: ChestRarity, hidden: boolean, discovered: boolean): Chest {
+  spawnChest(
+    x: number,
+    y: number,
+    rarity: ChestRarity,
+    hidden: boolean,
+    discovered: boolean,
+    id: string | null = null,
+    chunk: string | null = null,
+  ): Chest {
     const color = CHEST_COLORS[rarity];
     const tier = CHEST_RARITIES.indexOf(rarity);
     const glow =
@@ -144,7 +197,7 @@ export class LootSystem {
           })
         : null;
     sparkle?.setDepth(DEPTH.entity + y + 1);
-    const chest: Chest = { img, glow, sparkle, rarity, opened: false, hidden, discovered };
+    const chest: Chest = { img, glow, sparkle, rarity, opened: false, hidden, discovered, id, chunk };
     this.chests.push(chest);
     return chest;
   }
@@ -215,6 +268,7 @@ export class LootSystem {
       if (!it.alive) continue;
       if ((it.img.x - px) ** 2 + (it.img.y - py) ** 2 < 30 * 30) {
         it.alive = false;
+        this.consume(it.id);
         this.scene.tweens.killTweensOf(it.img);
         this.scene.tweens.add({ targets: it.img, y: it.img.y - 30, alpha: 0, scale: 1.8, duration: 300, onComplete: () => it.img.destroy() });
         this.scene.applyItem(it.kind);
@@ -225,6 +279,7 @@ export class LootSystem {
       if (!c.alive) continue;
       if ((c.img.x - px) ** 2 + (c.img.y - py) ** 2 < 32 * 32) {
         c.alive = false;
+        this.consume(c.id);
         this.openCapsule(c);
       }
     }
@@ -236,6 +291,30 @@ export class LootSystem {
     }
 
     this.updateAltars(dt);
+
+    // Limpieza: experiencia y objetos soltados muy lejos se liberan (mundo infinito).
+    this.cleanupTimer -= dt;
+    if (this.cleanupTimer <= 0) {
+      this.cleanupTimer = 2;
+      const far2 = 2800 * 2800;
+      for (let i = this.activeGems.length - 1; i >= 0; i--) {
+        const g = this.activeGems[i];
+        if ((g.img.x - px) ** 2 + (g.img.y - py) ** 2 > far2) {
+          g.active = false;
+          g.img.setVisible(false);
+          this.activeGems[i] = this.activeGems[this.activeGems.length - 1];
+          this.activeGems.pop();
+          this.freeGems.push(g);
+        }
+      }
+      this.pickups = this.pickups.filter((it) => {
+        if (!it.alive) return false;
+        if (it.chunk || (it.img.x - px) ** 2 + (it.img.y - py) ** 2 < far2 * 2) return true;
+        this.destroyImg(it.img);
+        return false;
+      });
+      this.capsules = this.capsules.filter((c) => c.alive);
+    }
 
     this.discoverTimer -= dt;
     if (this.discoverTimer <= 0) {
@@ -284,6 +363,7 @@ export class LootSystem {
       }
       if (a.progress >= need) {
         a.used = true;
+        this.consume(a.poi.id);
         a.img.setTint(0x777777);
         this.scene.effects.ring(a.poi.x, a.poi.y, 120, 0xffd84a, 600);
         audio.play('levelup');
@@ -324,6 +404,7 @@ export class LootSystem {
 
   private openChest(c: Chest): void {
     c.opened = true;
+    this.consume(c.id);
     c.discovered = true;
     audio.play('chest');
     const color = CHEST_COLORS[c.rarity];
@@ -366,7 +447,7 @@ export function rewardLabel(r: Reward): ChestRewardView {
     case 'tickets':
       return { icon: '🎫', label: `${r.amount} ticket(s) de invocación` };
     case 'fragments':
-      return { icon: '💠', label: `${r.amount} fragmentos de energía` };
+      return { icon: '💠', label: `${r.amount} fragmentos para tu personaje` };
     case 'buff':
       return { icon: '🔥', label: `Transformación temporal: ${r.buff === 'power' ? 'daño x1.5' : r.buff === 'speed' ? 'velocidad x1.4' : 'EXP x2'} (${r.seconds} s)` };
   }

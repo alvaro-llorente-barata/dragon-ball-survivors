@@ -5,16 +5,17 @@ import { BOSSES } from '../data/bosses';
 import { ENEMIES } from '../data/enemies';
 import { WEAPONS } from '../data/attacks';
 import { pointInArc, pointInBeam, damageTaken, rollDamage } from '../game/logic/combat';
-import { BLOCKING_TILES, MAP_TILES, TILE, generateMap } from '../game/logic/mapgen';
+import { BLOCKING_TILES, CHUNK, CHUNK_PX, SPAWN_TILE, TILE, generateChunk, terrainAt, worldSeed } from '../game/logic/chunkgen';
+import { CHARACTERS } from '../data/characters';
 import { chestProbabilities, rollCapsule, rollChestRarity, rollChestRewards, CHEST_RARITIES } from '../game/logic/loot';
 import { mulberry32 } from '../game/logic/rng';
 import { addBuff, addXp, createRunState, tickBuffs, xpForLevel } from '../game/logic/run';
 import { enemyHpMul, maxEnemies, pickEnemyId, spawnRatePerSecond } from '../game/logic/spawn';
 import { NO_META, computeStats } from '../game/logic/stats';
-import { drainForm, nextForm, tryTransform } from '../game/logic/transform';
 import { MAX_WEAPONS, applyChoice, candidateUpgrades, generateChoices } from '../game/logic/upgrades';
 
 const goku = getCharacter('goku');
+void MAX_WEAPONS;
 const newRun = () => createRunState(goku, 120, 100, 0);
 
 describe('datos', () => {
@@ -77,35 +78,26 @@ describe('mejoras al subir de nivel', () => {
   });
 });
 
-describe('transformaciones', () => {
-  it('Kaioken requiere nivel y Ki, y el Ki se consume', () => {
-    const run = newRun();
-    run.ki = 100;
-    expect(nextForm(goku, run, [])?.ready).toBe(false); // nivel 1
-    run.level = 4;
-    expect(nextForm(goku, run, [])?.ready).toBe(true);
-    const f = tryTransform(goku, run, []);
-    expect(f?.id).toBe('kaioken');
-    expect(run.ki).toBe(75);
-    const dmgBase = computeStats(goku, { ...run, formId: 'base' }, NO_META).energyMul;
-    expect(computeStats(goku, run, NO_META).energyMul).toBeGreaterThan(dmgBase);
+describe('versiones de Goku (sin transformaciones en partida)', () => {
+  it('hay 9 fases, ids únicos y estrellas de 1 a 7', () => {
+    const gokus = CHARACTERS.filter((c) => c.family === 'goku');
+    expect(gokus).toHaveLength(9);
+    expect(new Set(gokus.map((c) => c.id)).size).toBe(9);
+    expect(new Set(gokus.map((c) => c.stars))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7]));
+    for (const c of gokus) expect(c.weaponPool).toContain(c.startingWeapon);
   });
-  it('sin Ki vuelve a la forma base', () => {
-    const run = newRun();
-    run.level = 10;
-    run.ki = 30;
-    tryTransform(goku, run, []);
-    expect(run.formId).toBe('kaioken');
-    expect(drainForm(goku, run, 10)).toBe(true);
-    expect(run.formId).toBe('base');
+  it('más estrellas = más poder', () => {
+    const base = computeStats(getCharacter('goku'), newRun(), NO_META);
+    const ui = computeStats(getCharacter('goku_ui'), newRun(), NO_META);
+    expect(ui.energyMul).toBeGreaterThan(base.energyMul);
+    expect(ui.moveSpeed).toBeGreaterThan(base.moveSpeed);
+    expect(ui.dodgeChance).toBeGreaterThan(0);
   });
-  it('Super Saiyan 2 está bloqueada hasta vencer a Vegeta', () => {
-    const run = newRun();
-    run.level = 30;
-    run.ki = 999;
-    run.formId = 'ssj';
-    expect(nextForm(goku, run, [])?.ready).toBe(false);
-    expect(nextForm(goku, run, ['vegeta'])?.ready).toBe(true);
+  it('el nivel del personaje sube vida y daño', () => {
+    const lv1 = computeStats(goku, newRun(), NO_META);
+    const lv5 = computeStats(goku, newRun(), { ...NO_META, charPower: 0.24 });
+    expect(lv5.maxHp).toBeGreaterThan(lv1.maxHp);
+    expect(lv5.physicalMul).toBeGreaterThan(lv1.physicalMul);
   });
 });
 
@@ -165,31 +157,57 @@ describe('cofres y cápsulas', () => {
   });
 });
 
-describe('generación de mapas', () => {
+describe('mapa infinito por trozos', () => {
   for (const def of MAPS) {
-    it(`${def.id}: reproducible, grande y con zona inicial libre`, () => {
-      const a = generateMap(def, 1234);
-      const b = generateMap(def, 1234);
-      expect(JSON.stringify(a)).toBe(JSON.stringify(b));
-      expect(a.width).toBe(MAP_TILES);
-      expect(a.width * TILE).toBeGreaterThanOrEqual(4000);
-      const cx = Math.floor(a.width / 2);
-      const cy = Math.floor(a.height / 2);
-      for (let y = cy - 5; y <= cy + 5; y++) for (let x = cx - 5; x <= cx + 5; x++) expect(BLOCKING_TILES).not.toContain(a.tiles[y][x]);
-      expect(a.obstacles.length).toBeGreaterThan(100);
-      expect(a.chests.length).toBeGreaterThanOrEqual(10);
-      expect(a.capsules.length).toBeGreaterThan(20);
-      expect(a.pois.some((p) => p.type === 'secret')).toBe(true);
-      expect(a.chests.some((c) => c.hidden)).toBe(true);
-      for (const c of a.chests) {
-        const t = a.tiles[Math.floor(c.y / TILE)][Math.floor(c.x / TILE)];
-        expect(BLOCKING_TILES).not.toContain(t);
-      }
+    it(`${def.id}: reproducible, sin límites y con zona inicial libre`, () => {
+      const seed = worldSeed(def, 1234);
+      expect(JSON.stringify(generateChunk(def, seed, 3, -2))).toBe(JSON.stringify(generateChunk(def, seed, 3, -2)));
+      // Trozos muy lejanos y negativos también se generan.
+      const far = generateChunk(def, seed, -5000, 7000);
+      expect(far.tiles).toHaveLength(CHUNK);
+      expect(far.tiles[0]).toHaveLength(CHUNK);
+      for (let y = -4; y <= 4; y++)
+        for (let x = -4; x <= 4; x++) expect(BLOCKING_TILES).not.toContain(terrainAt(def, seed, SPAWN_TILE.x + x, SPAWN_TILE.y + y));
+      // En una zona de 8x8 trozos hay obstáculos, cofres, cápsulas y lugares especiales.
+      let obstacles = 0, chests = 0, capsules = 0, pois = 0, hidden = 0;
+      for (let cy = -4; cy < 4; cy++)
+        for (let cx = -4; cx < 4; cx++) {
+          const ch = generateChunk(def, seed, cx, cy);
+          obstacles += ch.obstacles.length;
+          chests += ch.chests.length;
+          capsules += ch.capsules.length;
+          pois += ch.pois.length;
+          hidden += ch.chests.filter((c) => c.hidden).length;
+          for (const c of ch.chests) {
+            expect(c.x).toBeGreaterThanOrEqual(cx * CHUNK_PX);
+            expect(c.x).toBeLessThan((cx + 1) * CHUNK_PX);
+            const t = ch.tiles[Math.floor(c.y / TILE) - cy * CHUNK][Math.floor(c.x / TILE) - cx * CHUNK];
+            expect(BLOCKING_TILES).not.toContain(t);
+          }
+        }
+      expect(obstacles).toBeGreaterThan(200);
+      expect(chests).toBeGreaterThan(15);
+      expect(capsules).toBeGreaterThan(60);
+      expect(pois).toBeGreaterThan(5);
+      expect(hidden + pois).toBeGreaterThan(0);
     });
   }
-  it('semillas distintas dan mapas distintos', () => {
+  it('los ids de contenido son únicos y estables', () => {
+    const def = getMap('earth');
+    const seed = worldSeed(def, 9);
+    const ids = new Set<string>();
+    for (let cy = -2; cy < 2; cy++)
+      for (let cx = -2; cx < 2; cx++) {
+        const ch = generateChunk(def, seed, cx, cy);
+        for (const o of [...ch.obstacles, ...ch.chests, ...ch.capsules, ...ch.items]) {
+          expect(ids.has(o.id)).toBe(false);
+          ids.add(o.id);
+        }
+      }
+  });
+  it('semillas distintas dan mundos distintos', () => {
     const m = getMap('earth');
-    expect(JSON.stringify(generateMap(m, 1).tiles)).not.toBe(JSON.stringify(generateMap(m, 2).tiles));
+    expect(JSON.stringify(generateChunk(m, 1, 2, 2).tiles)).not.toBe(JSON.stringify(generateChunk(m, 2, 2, 2).tiles));
   });
 });
 

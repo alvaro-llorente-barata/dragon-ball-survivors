@@ -3,10 +3,13 @@ export const DEPTH = {
   decal: 5,
   pickup: 20,
   telegraph: 30,
-  /** entidades: ENTITY + y para ordenar por profundidad */
-  entity: 1000,
-  effect: 20000,
-  text: 30000,
+  /**
+   * entidades: ENTITY + y para ordenar por profundidad. El mapa es infinito y la y puede ser
+   * negativa, así que la base es muy alta para quedar siempre por encima del suelo.
+   */
+  entity: 10_000_000,
+  effect: 30_000_000,
+  text: 40_000_000,
 } as const;
 
 export const MAX_ENEMIES_POOL = 420;

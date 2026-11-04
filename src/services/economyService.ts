@@ -38,8 +38,16 @@ export function buyUpgrade(meta: MetaState, id: string): { ok: boolean; meta: Me
   };
 }
 
-export function metaBonuses(meta: MetaState): MetaBonuses {
-  const b: MetaBonuses = { maxHp: 0, damage: 0, speed: 0, xp: 0, luck: 0, kiRegen: 0, revives: 0 };
-  for (const def of META_UPGRADES) b[def.id] = (meta.upgrades[def.id] ?? 0) * def.per;
+/** Bonificación por nivel de personaje: +6% vida y daño por nivel por encima del 1. */
+export const CHAR_POWER_PER_LEVEL = 0.06;
+
+export function metaBonuses(meta: MetaState, characterId?: string): MetaBonuses {
+  const b: MetaBonuses = { maxHp: 0, damage: 0, speed: 0, xp: 0, luck: 0, kiRegen: 0, revives: 0, charPower: 0 };
+  for (const def of META_UPGRADES) {
+    if (def.id === 'charPower') continue;
+    b[def.id] = (meta.upgrades[def.id] ?? 0) * def.per;
+  }
+  const lvl = characterId ? (meta.characters[characterId]?.level ?? 1) : 1;
+  b.charPower = (lvl - 1) * CHAR_POWER_PER_LEVEL;
   return b;
 }

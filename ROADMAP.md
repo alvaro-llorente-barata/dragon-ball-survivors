@@ -2,14 +2,12 @@
 
 | Fase | Estado | Qué hay |
 |---|---|---|
-| 1 Juego básico | Hecha | Menú, Goku, mapa 5120 px, cámara, enemigos, ataques, EXP, nivel, Game Over, reinicio |
-| 2 Exploración | Hecha | Cofres (5 rarezas), cápsulas (6), 8 objetos, obstáculos, rocas rompibles, minimapa, zonas ocultas, altares, campamentos, 5 eventos |
-| 3 Combate | Hecha (Goku) | 7 ataques con lógica propia + Genkidama, Ki, críticos, efectos |
-| 4 Transformaciones | Parcial | Kaioken, SSJ, SSJ2 (Goku). Faltan SSJ3, God, Blue, UI |
-| 5 Personajes | Pendiente | Solo Goku. Añadir en `src/data/characters` |
-| 6 Jefes | Parcial | 9 jefes con fases y avisos (Saiyan y Namek) |
-| 7 Progresión | Parcial | Monedas, mejoras permanentes, guardado, exportar/importar. Faltan colección, invocaciones, misiones, logros |
-| 8 Contenido | Parcial | 3 mapas. Faltan Bolas de Dragón, Shenron, fusiones, modo historia |
+| 1 Juego básico | Hecha | Menú, partida, cámara, enemigos, ataques, EXP, nivel, Game Over |
+| 2 Exploración | Hecha | Mapa infinito por trozos, cofres, cápsulas, objetos, zonas ocultas, altares, eventos |
+| 3 Combate | Hecha (Goku) | 7 ataques, máximo 4 a la vez, Genkidama (Q) |
+| 4 Fases | Hecha (Goku) | 9 versiones de Goku (1★ a 7★) que se consiguen invocando; sin transformaciones en partida |
+| 5 Personajes | Pendiente | Vegeta, Gohan, Piccolo… (añadir en `src/data/characters`) |
+| 6 Jefes | Parcial | 9 jefes con fases y avisos |
+| 7 Progresión | Parcial | Invocaciones con Bola de Dragón, garantías, fragmentos, nivel de personaje, mejoras, guardado. Faltan misiones y logros |
+| 8 Contenido | Parcial | 3 biomas infinitos. Faltan Bolas de Dragón en partida, Shenron, fusiones, historia |
 | 9 Pulido | Pendiente | |
-
-Tickets y fragmentos ya se ganan y se guardan; se usarán en invocaciones.

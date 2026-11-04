@@ -1,8 +1,8 @@
 import { PASSIVES } from '../../data/passives';
-import type { CharacterDef, TransformationDef } from '../../data/types';
+import type { CharacterDef } from '../../data/types';
 import type { RunState } from './run';
 
-/** Bonificaciones permanentes compradas en el menú (fracciones, 0.1 = +10%). */
+/** Bonificaciones permanentes (fracciones, 0.1 = +10%). */
 export interface MetaBonuses {
   maxHp: number;
   damage: number;
@@ -11,9 +11,11 @@ export interface MetaBonuses {
   luck: number;
   kiRegen: number;
   revives: number;
+  /** nivel del personaje mejorado con fragmentos (+6% vida y daño por nivel) */
+  charPower: number;
 }
 
-export const NO_META: MetaBonuses = { maxHp: 0, damage: 0, speed: 0, xp: 0, luck: 0, kiRegen: 0, revives: 0 };
+export const NO_META: MetaBonuses = { maxHp: 0, damage: 0, speed: 0, xp: 0, luck: 0, kiRegen: 0, revives: 0, charPower: 0 };
 
 export interface PlayerStats {
   maxHp: number;
@@ -33,53 +35,32 @@ export interface PlayerStats {
   luck: number;
   pierceBonus: number;
   projectileTint: number | null;
-}
-
-export function getForm(char: CharacterDef, formId: string): TransformationDef {
-  return char.transformations.find((f) => f.id === formId) ?? char.transformations[0];
+  dodgeChance: number;
+  regen: number;
 }
 
 export function baseMaxHp(char: CharacterDef, meta: MetaBonuses): number {
-  return Math.round(char.stats.hp * (1 + meta.maxHp));
+  return Math.round(char.stats.hp * (1 + meta.maxHp + meta.charPower));
 }
 
 export function computeStats(char: CharacterDef, run: RunState, meta: MetaBonuses): PlayerStats {
-  const bonus = {
-    damage: 0,
-    moveSpeed: 0,
-    cooldown: 0,
-    area: 0,
-    maxHp: 0,
-    kiRegen: 0,
-    crit: 0,
-    magnet: 0,
-    amount: 0,
-    defense: 0,
-    xp: 0,
-  };
+  const bonus = { damage: 0, moveSpeed: 0, cooldown: 0, area: 0, maxHp: 0, kiRegen: 0, crit: 0, magnet: 0, amount: 0, defense: 0, xp: 0 };
   for (const [id, lvl] of Object.entries(run.passives)) {
     const p = PASSIVES[id];
     if (!p) continue;
-    for (const [k, v] of Object.entries(p.perLevel)) {
-      bonus[k as keyof typeof bonus] += (v ?? 0) * lvl;
-    }
+    for (const [k, v] of Object.entries(p.perLevel)) bonus[k as keyof typeof bonus] += (v ?? 0) * lvl;
   }
-  const form = getForm(char, run.formId);
   const s = char.stats;
-
-  const maxHp = Math.round(s.hp * (1 + meta.maxHp + bonus.maxHp));
-  let damage = (1 + meta.damage + bonus.damage) * form.damageMul;
+  const maxHp = Math.round(s.hp * (1 + meta.maxHp + meta.charPower + bonus.maxHp));
+  let damage = 1 + meta.damage + meta.charPower + bonus.damage;
   if (run.buffs.power) damage *= 1.5;
-
-  // Sangre Saiyan: más daño con poca vida.
   if (char.passives.some((p) => p.id === 'saiyan_blood')) {
     const ratio = Math.max(0, Math.min(1, run.hp / Math.max(1, maxHp)));
     damage *= 1 + 0.3 * (1 - ratio);
   }
-
-  let moveSpeed = 1.5 * s.speed * (1 + meta.speed + bonus.moveSpeed) * form.speedMul;
+  let moveSpeed = 1.5 * s.speed * (1 + meta.speed + bonus.moveSpeed);
   if (run.buffs.speed) moveSpeed *= 1.4;
-
+  const dodge = char.passives.find((p) => p.id === 'auto_dodge');
   return {
     maxHp,
     maxKi: s.ki,
@@ -87,16 +68,18 @@ export function computeStats(char: CharacterDef, run: RunState, meta: MetaBonuse
     moveSpeed,
     physicalMul: (damage * s.physical) / 100,
     energyMul: (damage * s.energy) / 100,
-    cooldownMul: Math.max(0.35, (1 - bonus.cooldown) * form.cooldownMul),
+    cooldownMul: Math.max(0.35, 1 - bonus.cooldown),
     areaMul: 1 + bonus.area,
-    amount: bonus.amount + (form.attackMods?.extraCount ?? 0),
+    amount: bonus.amount + (char.attackMods?.extraCount ?? 0),
     crit: 0.05 + bonus.crit,
     critMul: 1.75,
     magnet: 70 * (1 + bonus.magnet),
-    defense: (s.defense + bonus.defense) * form.defenseMul,
+    defense: s.defense + bonus.defense,
     xpMul: (1 + meta.xp + bonus.xp) * (run.buffs.xp ? 2 : 1),
     luck: meta.luck,
-    pierceBonus: form.attackMods?.pierceBonus ?? 0,
-    projectileTint: form.attackMods?.projectileTint ?? null,
+    pierceBonus: char.attackMods?.pierceBonus ?? 0,
+    projectileTint: char.attackMods?.projectileTint ?? null,
+    dodgeChance: dodge ? (char.stars >= 7 ? 0.35 : 0.2) : 0,
+    regen: char.passives.some((p) => p.id === 'regeneration') ? maxHp * 0.01 : 0,
   };
 }

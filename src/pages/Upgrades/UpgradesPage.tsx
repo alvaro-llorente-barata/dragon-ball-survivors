@@ -70,10 +70,10 @@ export function UpgradesPage({ go }: { go: (s: Screen) => void }) {
       <Panel>
         <h2 className="font-bold">Inventario</h2>
         <p className="text-sm text-slate-300">
-          🎫 Tickets de invocación: <b>{meta.tickets}</b> · 💠 Fragmentos de energía: <b>{meta.fragments}</b>
+          🎫 Tickets de invocación: <b>{meta.tickets}</b>
         </p>
         <p className="mt-1 text-xs text-slate-500">
-          Los tickets y fragmentos se guardan ya. Las invocaciones y la mejora de personajes llegan en la fase de progresión (ver ROADMAP.md).
+          Usa los tickets en Invocaciones. Los fragmentos de cada personaje (al repetirlo) sirven para subirlo de nivel en la Colección.
         </p>
       </Panel>
     </div>

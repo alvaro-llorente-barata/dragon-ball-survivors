@@ -32,10 +32,14 @@ export function applyRunResult(meta: MetaState, r: RunResult): { meta: MetaState
       newly.push(m.id);
     }
   }
+  // Los fragmentos ganados en partida van al personaje con el que se jugó.
+  const prog = meta.characters[r.characterId] ?? { level: 1, shards: 0 };
+  const characters = { ...meta.characters, [r.characterId]: { ...prog, shards: prog.shards + r.fragments } };
   return {
     unlockedMaps: newly,
     meta: {
       ...meta,
+      characters,
       coins: meta.coins + r.coins,
       tickets: meta.tickets + r.tickets,
       fragments: meta.fragments + r.fragments,

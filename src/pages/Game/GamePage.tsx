@@ -26,7 +26,7 @@ export function GamePage({ go }: { go: (s: Screen) => void }) {
         characterId: meta.selectedCharacter,
         mapId: meta.selectedMap,
         seed: Math.floor(Math.random() * 2 ** 31),
-        meta: metaBonuses(meta),
+        meta: metaBonuses(meta, meta.selectedCharacter),
         settings: meta.settings,
         everDefeated: Object.keys(meta.bossesDefeated),
         onEnd: (result) => applyRun(result),

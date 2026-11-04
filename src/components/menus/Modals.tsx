@@ -104,7 +104,7 @@ function Pause() {
     <Backdrop>
       <div className="pop-in w-full max-w-sm rounded-3xl bg-panel p-6 text-center">
         <h2 className="title-text text-4xl">Pausa</h2>
-        <p className="mt-2 text-sm text-slate-300">WASD/flechas mover · Espacio teletransporte · Q definitivo · E transformación</p>
+        <p className="mt-2 text-sm text-slate-300">WASD/flechas mover · Espacio teletransporte · Q ataque definitivo</p>
         <div className="mt-5 flex flex-col gap-3">
           <Button onClick={() => bridge.commands?.resume()}>Continuar</Button>
           <Button variant="danger" onClick={() => bridge.commands?.abandon()}>

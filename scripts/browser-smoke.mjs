@@ -96,11 +96,15 @@ async function main() {
   await send('Runtime.enable');
   await send('Page.enable');
   await send('Page.navigate', { url: URL_ });
-  await sleep(2500);
+  for (let i = 0; i < 40; i++) {
+    await sleep(500);
+    if (await evaluate(`document.body.innerText.includes('Jugar')`).catch(() => false)) break;
+  }
+  console.log('Texto inicial:', (await evaluate('document.body.innerText.slice(0, 120)')).replace(/\n/g, ' | '));
 
   check('Menú principal visible', await clickText('Jugar'));
   await sleep(600);
-  check('Pantalla de selección', await clickText('¡A luchar!'));
+  check('Pantalla de selección', await clickText('¡A luchar'));
   await sleep(3500);
   check('Escena de juego creada', await S('!!s && !!s.player'));
   await shot('01-inicio');
@@ -133,17 +137,20 @@ async function main() {
   check('Mejoras aplicadas', (await S('JSON.stringify([s.run.weapons, s.run.passives])')) !== weaponsBefore, await S('JSON.stringify(s.run.weapons)'));
   check('Nivel alto tras EXP', (await S('s.run.level')) >= 10, `nivel ${await S('s.run.level')}`);
 
-  // Transformaciones
-  await S('(s.run.ki = 100, 0)');
-  await key('e', 'KeyE', 69);
-  await sleep(300);
-  check('Kaioken con E', (await S('s.run.formId')) === 'kaioken');
-  await S('(s.run.ki = 100, 0)');
-  await key('e', 'KeyE', 69);
-  await sleep(1200);
-  check('Super Saiyan con E', (await S('s.run.formId')) === 'ssj', await S(`JSON.stringify({ form: s.run.formId, ki: Math.round(s.run.ki), lvl: s.run.level, modal: s.activeModal?.type ?? null, paused: s.scene.isPaused() })`));
-  check('Textura dorada aplicada', (await S('s.player.sprite.texture.key')) === 'char_goku_ssj');
-  await shot('04-super-saiyan');
+  check('Máximo 4 ataques', (await S('Object.keys(s.run.weapons).length')) <= 4, await S('Object.keys(s.run.weapons).length'));
+
+  // Mundo infinito: el jugador viaja lejos y los trozos se cargan y descargan.
+  await S(`(() => { s.player.invulnUntil = s.time.now + 600000; return 0; })()`);
+  const chunksBefore = await S('s.world.loadedCount()');
+  for (let i = 1; i <= 6; i++) {
+    await S(`(() => { s.player.sprite.body.reset(s.player.x + 2600, s.player.y - 1800); return 0; })()`);
+    await sleep(350);
+  }
+  check('Jugador visible sobre el suelo en coordenadas negativas', await S('s.player.y < 0 && s.player.sprite.depth > 0 && s.player.sprite.visible'), `y=${Math.round(await S('s.player.y'))}`);
+  check('Mapa infinito: viaje de 15.000 px', (await S('s.player.x')) > 15000, `x=${Math.round(await S('s.player.x'))}`);
+  check('Trozos acotados en memoria', (await S('s.world.loadedCount()')) <= 49, `trozos cargados: ${await S('s.world.loadedCount()')} (antes ${chunksBefore})`);
+  await sleep(1500);
+  await shot('04-lejos');
 
   // Ataque definitivo
   await S('(s.run.ki = 100, 0)');
@@ -215,11 +222,44 @@ async function main() {
   await sleep(800);
   const saved = await evaluate(`new Promise(res => { const r = indexedDB.open('dragon-ball-survivors'); r.onsuccess = () => { const g = r.result.transaction('saves').objectStore('saves').get('main'); g.onsuccess = () => res(g.result ? JSON.parse(g.result).stats.runs : 0); }; r.onerror = () => res(-1); })`);
   check('Progresión guardada en IndexedDB', saved >= 1, `partidas guardadas: ${saved}`);
+  // Invocaciones: Bola de Dragón
+  await evaluate(`(() => { const m = window.__meta.getState(); m.set({ ...m.meta, tickets: m.meta.tickets + 10 }); return 0; })()`);
+  await clickText('Invocaciones');
+  await sleep(500);
+  check('Pantalla de invocaciones', await evaluate(`document.body.innerText.includes('Banner')`));
+  const ownedBefore = await evaluate(`window.__meta.getState().meta.unlockedCharacters.length`);
+  await clickText('Invocar x10');
+  await sleep(400);
+  check('Aparece la Bola de Dragón', await evaluate(`!!document.querySelector('svg[aria-label^="Bola de Dragón"]') && document.body.innerText.includes('brilla')`));
+  await shot('08-bola');
+  await sleep(2200);
+  await shot('09-revelado');
+  await clickText('Saltar');
+  await sleep(400);
+  const after10 = await evaluate(`window.__meta.getState().meta`);
+  check('Invocación x10 gasta tickets', after10.gacha.pulls >= 10, `tiradas ${after10.gacha.pulls}`);
+  check('Personajes nuevos desbloqueados', after10.unlockedCharacters.length > ownedBefore, `personajes: ${after10.unlockedCharacters.join(',')}`);
+  await shot('10-resultado');
+  // Jugar con un personaje conseguido distinto de Goku base
+  const other = after10.unlockedCharacters.find((id) => id !== 'goku');
+  await clickText('Volver');
+  await sleep(300);
   await clickText('Jugar');
   await sleep(500);
-  await clickText('¡A luchar!');
+  if (other) {
+    await evaluate(`(() => { const m = window.__meta.getState(); m.select(${JSON.stringify(other)}, 'earth'); return 0; })()`);
+    await clickText('Volver');
+    await sleep(300);
+    await clickText('Jugar');
+    await sleep(500);
+  }
+  await clickText('¡A luchar');
   await sleep(3500);
-  check('Nueva partida tras volver al menú', await S('!!s && s.run.time > 0 && s.run.kills >= 0'));
+  check('Nueva partida tras volver al menú', await S('!!s && s.run.time > 0'));
+  if (other) {
+    check(`Juega con ${other} (aura visible)`, (await S('s.char.id')) === other && (await S('s.player.aura.visible')), await S('s.char.name'));
+    await shot('11-otro-personaje');
+  }
 
   check('Sin errores de JavaScript', errors.length === 0, errors.slice(0, 5).join(' | '));
 }

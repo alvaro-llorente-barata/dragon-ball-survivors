@@ -4,6 +4,7 @@ import { applyRunResult, type RunResult } from '../services/progressionService';
 import { loadMeta, saveMeta, importJson, downloadJson } from '../services/saveService/indexedDb';
 import { defaultMeta, type MetaState, type Settings } from '../services/saveService/meta';
 import { audio } from '../services/audioService';
+import { levelUpCharacter, summon, type SummonResult } from '../services/gachaService';
 
 interface MetaStore {
   meta: MetaState;
@@ -15,6 +16,8 @@ interface MetaStore {
   buy(id: string): string | null;
   updateSettings(patch: Partial<Settings>): void;
   select(characterId: string, mapId: string): void;
+  summon(count: number): SummonResult[] | string;
+  levelUp(id: string): string | null;
   exportSave(): void;
   importSave(text: string): string | null;
   resetSave(): void;
@@ -59,6 +62,21 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
     get().set(meta);
   },
   select: (characterId, mapId) => get().set({ ...get().meta, selectedCharacter: characterId, selectedMap: mapId }),
+  summon: (count) => {
+    try {
+      const r = summon(get().meta, count, Math.random);
+      get().set(r.meta);
+      return r.results;
+    } catch (err) {
+      return err instanceof Error ? err.message : 'No se pudo invocar';
+    }
+  },
+  levelUp: (id) => {
+    const r = levelUpCharacter(get().meta, id);
+    if (!r.ok) return r.reason ?? 'No se puede mejorar';
+    get().set(r.meta);
+    return null;
+  },
   exportSave: () => downloadJson(get().meta),
   importSave: (text) => {
     try {
@@ -70,3 +88,6 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
   },
   resetSave: () => get().set(defaultMeta()),
 }));
+
+// Solo en desarrollo: acceso para pruebas automatizadas en navegador.
+if (import.meta.env.DEV) (globalThis as unknown as { __meta?: typeof useMetaStore }).__meta = useMetaStore;

@@ -16,7 +16,7 @@ export function HomePage({ go }: { go: (s: Screen) => void }) {
       <div className="relative text-center">
         <h1 className="title-text text-5xl sm:text-7xl">DRAGON BALL</h1>
         <h2 className="title-text text-4xl sm:text-6xl">SURVIVORS</h2>
-        <p className="mt-2 text-sm text-slate-300">Fan game gratuito · sobrevive a las hordas, transfórmate y vence a los jefes</p>
+        <p className="mt-2 text-sm text-slate-300">Fan game gratuito · sobrevive en un mundo infinito, invoca guerreros y vence a los jefes</p>
       </div>
 
       <div className="relative">
@@ -31,6 +31,15 @@ export function HomePage({ go }: { go: (s: Screen) => void }) {
           }}
         >
           Jugar
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={() => {
+            audio.ensure();
+            go('summon');
+          }}
+        >
+          🐉 Invocaciones ({meta.tickets} 🎫)
         </Button>
         <Button variant="ghost" onClick={() => go('upgrades')}>
           Mejoras permanentes

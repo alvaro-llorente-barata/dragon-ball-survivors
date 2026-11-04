@@ -4,7 +4,8 @@ import type { CharacterDef } from '../../data/types';
 import { weightedPick, type Rng } from './rng';
 import type { RunState } from './run';
 
-export const MAX_WEAPONS = 6;
+/** Máximo de ataques automáticos equipados (el definitivo Q va aparte). */
+export const MAX_WEAPONS = 4;
 export const MAX_PASSIVES = 6;
 
 export type UpgradeKind = 'weapon_new' | 'weapon_up' | 'passive' | 'heal' | 'coins';

@@ -5,8 +5,9 @@ import { SelectPage } from './pages/Characters/SelectPage';
 import { GamePage } from './pages/Game/GamePage';
 import { UpgradesPage } from './pages/Upgrades/UpgradesPage';
 import { SettingsPage } from './pages/Settings/SettingsPage';
+import { SummonPage } from './pages/Summons/SummonPage';
 
-export type Screen = 'home' | 'select' | 'game' | 'upgrades' | 'settings';
+export type Screen = 'home' | 'select' | 'game' | 'upgrades' | 'settings' | 'summon';
 
 export function App() {
   const { loaded, load, error } = useMetaStore();
@@ -28,6 +29,7 @@ export function App() {
       {screen === 'game' && <GamePage go={setScreen} />}
       {screen === 'upgrades' && <UpgradesPage go={setScreen} />}
       {screen === 'settings' && <SettingsPage go={setScreen} />}
+      {screen === 'summon' && <SummonPage go={setScreen} />}
     </div>
   );
 }

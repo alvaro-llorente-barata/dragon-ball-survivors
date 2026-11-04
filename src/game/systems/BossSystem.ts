@@ -137,6 +137,10 @@ export class BossSystem {
     audio.play('explode');
     this.scene.run.bossesDefeated.push(def.id);
     this.scene.run.kills += 1;
+    // Los jefes dan tickets de invocación (miniboss 1, jefe 2).
+    const tickets = def.mini ? 1 : 2;
+    this.scene.run.tickets += tickets;
+    this.scene.effects.floatText(x, y - 60, `+${tickets} 🎫`, '#ffd84a');
     this.scene.loot.spawnChest(x, y, def.chest, false, true);
     for (let i = 0; i < 14; i++) this.scene.loot.dropGem(x + Phaser.Math.Between(-60, 60), y + Phaser.Math.Between(-60, 60), def.mini ? 8 : 20);
     for (let i = 0; i < 8; i++) this.scene.loot.dropGem(x + Phaser.Math.Between(-50, 50), y + Phaser.Math.Between(-50, 50), def.mini ? 5 : 12, true);

@@ -105,53 +105,48 @@ export interface PassiveDef {
   perLevel: StatBonus;
 }
 
-export interface TransformationDef {
-  id: string;
-  name: string;
-  /** nivel de partida necesario */
-  minLevel: number;
-  /** Ki que cuesta activarla */
-  kiCost: number;
-  /** Ki por segundo que consume mientras dura */
-  kiDrain: number;
-  damageMul: number;
-  cooldownMul: number;
-  speedMul: number;
-  defenseMul: number;
-  aura: number;
-  sprite?: Partial<SpriteSpec>;
-  attackMods?: { pierceBonus?: number; extraCount?: number; projectileTint?: number };
-  /** requisito permanente: haber derrotado a este jefe alguna vez */
-  requiresBossEver?: string;
-  description: string;
-}
-
 export interface CharacterPassive {
-  id: 'saiyan_blood' | 'regeneration' | 'namek_body';
+  /** saiyan_blood: más daño con poca vida · regeneration: recupera vida · auto_dodge: esquiva golpes */
+  id: 'saiyan_blood' | 'regeneration' | 'auto_dodge';
   name: string;
   description: string;
 }
 
-export type UnlockCondition =
-  | { type: 'default' }
-  | { type: 'boss'; bossId: string }
-  | { type: 'summon' };
+export type UnlockCondition = { type: 'default' } | { type: 'summon' };
 
+/**
+ * Personaje jugable. Cada fase (Goku SSJ, SSJ Blue...) es una versión distinta que se consigue
+ * con invocaciones: no hay transformaciones durante la partida.
+ */
 export interface CharacterDef {
   id: string;
   name: string;
+  /** familia para agrupar versiones del mismo personaje (goku, vegeta...) */
+  family: string;
   saga: Saga;
-  rarity: Rarity;
+  /** 1 a 7 estrellas: la rareza y las estrellas de la Bola de Dragón al invocarlo */
+  stars: number;
   stats: BaseStats;
   startingWeapon: string;
   weaponPool: string[];
   ultimate: string;
   dodge: { name: string; distance: number; cooldown: number };
   passives: CharacterPassive[];
-  transformations: TransformationDef[];
+  /** aura permanente (color) y rayos */
+  aura?: number;
+  lightning?: boolean;
+  attackMods?: { pierceBonus?: number; extraCount?: number; projectileTint?: number };
   sprite: SpriteSpec;
   description: string;
   unlock: UnlockCondition;
+}
+
+export function rarityForStars(stars: number): Rarity {
+  if (stars >= 7) return 'mythic';
+  if (stars >= 5) return 'legendary';
+  if (stars === 4) return 'epic';
+  if (stars === 3) return 'rare';
+  return 'common';
 }
 
 export type EnemyBehavior = 'chaser' | 'ranged' | 'exploder' | 'healer' | 'summoner';

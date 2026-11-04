@@ -58,6 +58,28 @@ canvas {
 }
 .shine { animation: shine 1.4s ease-in-out infinite; }
 
+@keyframes ball-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-6px) rotate(-6deg); }
+  40% { transform: translateX(6px) rotate(6deg); }
+  60% { transform: translateX(-4px) rotate(-4deg); }
+  80% { transform: translateX(4px) rotate(4deg); }
+}
+.ball-shake { animation: ball-shake 0.45s ease-in-out infinite; }
+
+@keyframes ball-flash {
+  0% { opacity: 0; transform: scale(0.4); }
+  40% { opacity: 1; transform: scale(1.4); }
+  100% { opacity: 0; transform: scale(2.2); }
+}
+.ball-flash { animation: ball-flash 0.6s ease-out both; }
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.float-y { animation: float-y 2.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .pop-in, .toast-in, .shine { animation: none; }
+  .pop-in, .toast-in, .shine, .ball-shake, .ball-flash, .float-y { animation: none; }
 }

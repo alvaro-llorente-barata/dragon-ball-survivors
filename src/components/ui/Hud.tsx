@@ -23,7 +23,7 @@ export function Hud() {
   const hud = useRunStore((s) => s.hud);
   const toasts = useRunStore((s) => s.toasts);
   if (!hud) return null;
-  const formColor = hexColor(hud.formColor);
+  const auraColor = hexColor(hud.auraColor);
   return (
     <div className="pointer-events-none absolute inset-0 text-white [text-shadow:0_1px_2px_#000]">
       {/* Experiencia */}
@@ -46,19 +46,9 @@ export function Hud() {
           ❤ {hud.hp}/{hud.maxHp} · Ki {hud.ki}/{hud.maxKi}
           {hud.shieldHits > 0 && <span className="ml-1 text-sky-300">◆{hud.shieldHits}</span>}
         </div>
-        <div className="text-xs font-bold" style={{ color: formColor }}>
-          ⚡ {hud.formName}
+        <div className="text-xs font-bold" style={{ color: auraColor }}>
+          {hud.charName} <span className="text-amber-300">{'★'.repeat(hud.stars)}</span>
         </div>
-        {hud.nextForm && (
-          <div className="text-[11px] text-slate-300">
-            <span className={hud.nextForm.ready ? 'font-bold text-amber-300' : ''}>
-              [E] {hud.nextForm.name}: {hud.nextForm.reason}
-            </span>
-            <div className="mt-0.5 w-40">
-              <Bar value={hud.ki} max={hud.nextForm.kiCost} color={hud.nextForm.ready ? '#ffd84a' : '#8a7a3a'} label="Medidor de transformación" height="h-1.5" />
-            </div>
-          </div>
-        )}
         <div className={`text-[11px] ${hud.ultimate.ready ? 'font-bold text-sky-300' : 'text-slate-400'}`}>
           [Q] {hud.ultimate.name} ({hud.ultimate.kiCost} Ki){hud.ultimate.cooldown > 0 ? ` · ${Math.round(hud.ultimate.cooldown * 100)}%` : ''}
         </div>
@@ -68,6 +58,7 @@ export function Hud() {
               {w.name} <b className="text-amber-300">{w.level}</b>
             </span>
           ))}
+          <span className="rounded bg-black/40 px-1.5 py-0.5 text-[10px] text-slate-400">Ataques {hud.weapons.length}/4</span>
         </div>
         <div className="flex flex-wrap gap-1">
           {hud.passives.map((p) => (

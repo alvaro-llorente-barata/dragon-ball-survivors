@@ -1,40 +1,54 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Screen } from '../../App';
 import { Button, CharacterPreview, Panel, hexColor } from '../../components/ui';
+import { DragonBall } from '../../components/ui/DragonBall';
 import { getWeapon } from '../../data/attacks';
-import { CHARACTERS, SAGA_NAMES } from '../../data/characters';
+import { CHARACTERS, RARITY_NAMES, SAGA_NAMES } from '../../data/characters';
 import { MAPS } from '../../data/maps';
-import { mergeSpec } from '../../game/art/chibi';
+import { rarityForStars } from '../../data/types';
+import { MAX_WEAPONS } from '../../game/logic/upgrades';
 import { audio } from '../../services/audioService';
+import { CHAR_POWER_PER_LEVEL } from '../../services/economyService';
+import { levelUpCost } from '../../services/gachaService';
+import { MAX_CHAR_LEVEL } from '../../services/saveService/meta';
 import { useMetaStore } from '../../stores/metaStore';
 
-const RARITY: Record<string, string> = {
-  common: 'Común',
-  rare: 'Raro',
-  epic: 'Épico',
-  legendary: 'Legendario',
-  mythic: 'Mítico',
-};
-
+/** Colección y selección: todos los personajes, solo se juega con los conseguidos. */
 export function SelectPage({ go }: { go: (s: Screen) => void }) {
   const meta = useMetaStore((s) => s.meta);
   const select = useMetaStore((s) => s.select);
-  const [charId, setCharId] = useState(meta.selectedCharacter);
+  const levelUp = useMetaStore((s) => s.levelUp);
+  const [charId, setCharId] = useState(meta.unlockedCharacters.includes(meta.selectedCharacter) ? meta.selectedCharacter : 'goku');
   const [mapId, setMapId] = useState(meta.unlockedMaps.includes(meta.selectedMap) ? meta.selectedMap : 'earth');
+  const [query, setQuery] = useState('');
+  const [starFilter, setStarFilter] = useState(0);
+  const [msg, setMsg] = useState<string | null>(null);
   const char = CHARACTERS.find((c) => c.id === charId) ?? CHARACTERS[0];
-  const everDefeated = Object.keys(meta.bossesDefeated);
+  const owned = meta.unlockedCharacters.includes(char.id);
+  const prog = meta.characters[char.id] ?? { level: 1, shards: 0 };
+  const cost = levelUpCost(prog.level);
+
+  const list = useMemo(
+    () =>
+      CHARACTERS.filter((c) => c.name.toLowerCase().includes(query.toLowerCase()) && (starFilter === 0 || c.stars === starFilter)).sort(
+        (a, b) => a.stars - b.stars,
+      ),
+    [query, starFilter],
+  );
 
   const start = () => {
+    if (!owned) return;
     audio.ensure();
     select(char.id, mapId);
     go('game');
   };
 
+  const power = 1 + (prog.level - 1) * CHAR_POWER_PER_LEVEL;
   const statRows: [string, number][] = [
-    ['Vida', char.stats.hp],
+    ['Vida', Math.round(char.stats.hp * power)],
     ['Ki', char.stats.ki],
-    ['Ataque físico', char.stats.physical],
-    ['Ataque de energía', char.stats.energy],
+    ['Ataque físico', Math.round(char.stats.physical * power)],
+    ['Ataque de energía', Math.round(char.stats.energy * power)],
     ['Defensa', char.stats.defense],
     ['Velocidad', char.stats.speed],
   ];
@@ -45,32 +59,67 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
         <Button variant="ghost" onClick={() => go('home')}>
           ← Volver
         </Button>
-        <h1 className="title-text text-3xl">Elige guerrero y escenario</h1>
-        <div className="w-24" />
+        <h1 className="title-text text-3xl">Colección</h1>
+        <Button variant="ghost" onClick={() => go('summon')}>
+          🎫 Invocar
+        </Button>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {CHARACTERS.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => setCharId(c.id)}
-            className={`rounded-xl border-2 p-2 ${c.id === char.id ? 'border-amber-300 bg-panel2' : 'border-slate-700 bg-panel'}`}
-            aria-pressed={c.id === char.id}
-          >
-            <CharacterPreview spec={c.sprite} scale={3} label={c.name} />
-            <div className="text-sm font-bold">{c.name}</div>
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nombre"
+          aria-label="Buscar personaje"
+          className="rounded-lg bg-panel2 px-3 py-2 text-sm"
+        />
+        <select value={starFilter} onChange={(e) => setStarFilter(Number(e.target.value))} aria-label="Filtrar por estrellas" className="rounded-lg bg-panel2 px-3 py-2 text-sm">
+          <option value={0}>Todas las rarezas</option>
+          {[1, 2, 3, 4, 5, 6, 7].map((s) => (
+            <option key={s} value={s}>
+              {'★'.repeat(s)} {RARITY_NAMES[rarityForStars(s)]}
+            </option>
+          ))}
+        </select>
+        <span className="text-xs text-slate-400">
+          {meta.unlockedCharacters.length}/{CHARACTERS.length} conseguidos
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-9">
+        {list.map((c) => {
+          const has = meta.unlockedCharacters.includes(c.id);
+          return (
+            <button
+              key={c.id}
+              onClick={() => setCharId(c.id)}
+              aria-pressed={c.id === char.id}
+              className={`rounded-xl border-2 p-1 text-center ${c.id === char.id ? 'border-amber-300 bg-panel2' : 'border-slate-700 bg-panel'} ${has ? '' : 'opacity-45 grayscale'}`}
+            >
+              <div className="flex justify-center">
+                <CharacterPreview spec={c.sprite} scale={3} label={c.name} />
+              </div>
+              <div className="text-[10px] text-amber-300">{'★'.repeat(c.stars)}</div>
+              <div className="truncate text-[10px] font-bold">{c.name.replace('Goku ', '')}</div>
+              {has ? <div className="text-[9px] text-slate-400">Nv {meta.characters[c.id]?.level ?? 1}</div> : <div className="text-[9px]">🔒</div>}
+            </button>
+          );
+        })}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Panel>
           <div className="flex gap-4">
-            <CharacterPreview spec={char.sprite} scale={6} label={char.name} />
+            <div className="flex flex-col items-center gap-2">
+              <div style={char.aura ? { filter: `drop-shadow(0 0 12px ${hexColor(char.aura)})` } : undefined}>
+                <CharacterPreview spec={char.sprite} scale={6} label={char.name} />
+              </div>
+              <DragonBall stars={char.stars} size={44} />
+            </div>
             <div>
               <h2 className="text-2xl font-black">{char.name}</h2>
               <div className="text-xs text-amber-300">
-                {SAGA_NAMES[char.saga]} · {RARITY[char.rarity]}
+                {'★'.repeat(char.stars)} · {RARITY_NAMES[rarityForStars(char.stars)]} · {SAGA_NAMES[char.saga]}
               </div>
               <p className="mt-2 text-sm text-slate-300">{char.description}</p>
               {char.passives.map((p) => (
@@ -78,6 +127,7 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
                   Pasiva: {p.name}. {p.description}
                 </p>
               ))}
+              {!owned && <p className="mt-2 text-sm font-bold text-red-300">🔒 Consíguelo en las invocaciones.</p>}
             </div>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
@@ -88,10 +138,26 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
               </div>
             ))}
           </div>
+          {owned && (
+            <div className="mt-3 rounded-xl bg-black/30 p-3 text-sm">
+              <div className="flex justify-between">
+                <span>
+                  Nivel <b>{prog.level}</b>/{MAX_CHAR_LEVEL}
+                </span>
+                <span>💠 {prog.shards} fragmentos</span>
+              </div>
+              {prog.level < MAX_CHAR_LEVEL && (
+                <Button className="mt-2 w-full py-2" disabled={prog.shards < cost.shards || meta.coins < cost.coins} onClick={() => setMsg(levelUp(char.id))}>
+                  Subir nivel (+6% vida y daño) · 💠{cost.shards} · 🪙{cost.coins}
+                </Button>
+              )}
+              {msg && <p className="mt-1 text-xs text-red-300">{msg}</p>}
+            </div>
+          )}
         </Panel>
 
         <Panel>
-          <h3 className="font-bold">Ataques</h3>
+          <h3 className="font-bold">Ataques (máximo {MAX_WEAPONS} a la vez en partida)</h3>
           <ul className="mt-1 space-y-1 text-sm">
             {char.weaponPool.map((id) => {
               const w = getWeapon(id);
@@ -106,43 +172,19 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
               );
             })}
             <li>
-              <span className="font-semibold text-sky-300">{getWeapon(char.ultimate).name}</span>
+              <span className="font-semibold text-sky-300">[Q] {getWeapon(char.ultimate).name}</span>
               <span className="text-slate-400"> · {getWeapon(char.ultimate).description}</span>
             </li>
             <li>
-              <span className="font-semibold text-sky-300">{char.dodge.name}</span>
-              <span className="text-slate-400"> · Esquiva instantánea (Espacio).</span>
+              <span className="font-semibold text-sky-300">[Espacio] {char.dodge.name}</span>
+              <span className="text-slate-400"> · Esquiva instantánea.</span>
             </li>
           </ul>
         </Panel>
       </div>
 
       <Panel>
-        <h3 className="font-bold">Transformaciones (E durante la partida)</h3>
-        <div className="mt-2 flex flex-wrap gap-3">
-          {char.transformations.map((f) => {
-            const locked = f.requiresBossEver && !everDefeated.includes(f.requiresBossEver);
-            return (
-              <div key={f.id} className={`w-40 rounded-xl border border-slate-700 p-2 text-center ${locked ? 'opacity-50' : ''}`}>
-                <div className="flex justify-center rounded-lg" style={{ boxShadow: `0 0 18px ${hexColor(f.aura)}55 inset` }}>
-                  <CharacterPreview spec={mergeSpec(char.sprite, f.sprite)} scale={3} label={f.name} />
-                </div>
-                <div className="font-bold" style={{ color: f.id === 'base' ? undefined : hexColor(f.aura) }}>
-                  {f.name}
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  {f.id === 'base' ? 'Inicial' : `Nivel ${f.minLevel} · ${f.kiCost} Ki · -${f.kiDrain} Ki/s`}
-                </div>
-                {f.id !== 'base' && <div className="text-[11px] text-slate-300">Daño x{f.damageMul}</div>}
-                {locked && <div className="text-[11px] text-red-300">🔒 {f.description}</div>}
-              </div>
-            );
-          })}
-        </div>
-      </Panel>
-
-      <Panel>
-        <h3 className="font-bold">Escenario</h3>
+        <h3 className="font-bold">Escenario (mapa infinito)</h3>
         <div className="mt-2 grid gap-3 sm:grid-cols-3">
           {MAPS.map((m) => {
             const unlocked = meta.unlockedMaps.includes(m.id);
@@ -164,12 +206,10 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
         </div>
       </Panel>
 
-      <Button className="self-center px-12 text-xl" onClick={start}>
-        ¡A luchar!
+      <Button className="self-center px-12 text-xl" disabled={!owned} onClick={start}>
+        {owned ? `¡A luchar con ${char.name}!` : 'Personaje bloqueado'}
       </Button>
-      <p className="text-center text-xs text-slate-400">
-        WASD/flechas: mover · Espacio: teletransporte · Q: ataque definitivo · E: transformarse · Esc: pausa
-      </p>
+      <p className="text-center text-xs text-slate-400">WASD/flechas: mover · Espacio: teletransporte · Q: ataque definitivo · Esc: pausa</p>
     </div>
   );
 }

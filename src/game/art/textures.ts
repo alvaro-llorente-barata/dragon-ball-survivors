@@ -3,7 +3,7 @@ import type { MapDef } from '../../data/maps';
 import type { SpriteSpec } from '../../data/types';
 import { CAPSULES, CHEST_COLORS, ITEMS } from '../../data/items';
 import { CHEST_RARITIES } from '../logic/loot';
-import { T, TILE, TILE_COUNT } from '../logic/mapgen';
+import { T, TILE, TILE_COUNT, terrainAt } from '../logic/chunkgen';
 import { mulberry32 } from '../logic/rng';
 import { FRAME_COUNT, FRAME_H, FRAME_W, drawCharacterSheet } from './chibi';
 
@@ -627,15 +627,21 @@ export function generateMapTextures(scene: Phaser.Scene, map: MapDef): string {
   return key;
 }
 
-/** Imagen pequeña del terreno para el minimapa (1 px por tile). */
-export function minimapImage(tiles: number[][], map: MapDef): string {
-  const h = tiles.length;
-  const w = tiles[0]?.length ?? 0;
+/**
+ * Minimapa del mundo infinito: muestrea el terreno alrededor de (cx, cy).
+ * size = píxeles de la imagen, extent = mitad del lado en píxeles de mundo.
+ */
+export function minimapImage(map: MapDef, seed: number, cx: number, cy: number, extent: number, size = 64): string {
+  const w = size;
+  const h = size;
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const c = canvas.getContext('2d');
   if (!c) return '';
+  const step = (extent * 2) / size;
+  const tileAt = (x: number, y: number) =>
+    terrainAt(map, seed, Math.floor((cx - extent + x * step) / TILE), Math.floor((cy - extent + y * step) / TILE));
   const p = map.palette;
   const colors: Record<number, string> = {
     [T.GRASS]: p.grass,
@@ -652,7 +658,7 @@ export function minimapImage(tiles: number[][], map: MapDef): string {
   };
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
-      c.fillStyle = colors[tiles[y][x]] ?? '#000';
+      c.fillStyle = colors[tileAt(x, y)] ?? '#000';
       c.fillRect(x, y, 1, 1);
     }
   return canvas.toDataURL();

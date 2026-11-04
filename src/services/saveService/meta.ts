@@ -32,9 +32,26 @@ export interface MetaState {
   selectedCharacter: string;
   selectedMap: string;
   bossesDefeated: Record<string, number>;
+  /** nivel (1-10) y fragmentos de cada personaje conseguido */
+  characters: Record<string, CharacterProgress>;
+  gacha: GachaState;
   stats: MetaStats;
   settings: Settings;
   updatedAt: number;
+}
+
+export interface CharacterProgress {
+  level: number;
+  shards: number;
+}
+
+/** Contadores de garantía de las invocaciones */
+export interface GachaState {
+  pulls: number;
+  /** invocaciones seguidas sin 4★ o más */
+  sinceEpic: number;
+  /** invocaciones seguidas sin 7★ */
+  sinceMythic: number;
 }
 
 export function defaultSettings(): Settings {
@@ -61,6 +78,8 @@ export function defaultMeta(): MetaState {
     selectedCharacter: 'goku',
     selectedMap: 'earth',
     bossesDefeated: {},
+    characters: { goku: { level: 1, shards: 0 } },
+    gacha: { pulls: 0, sinceEpic: 0, sinceMythic: 0 },
     stats: { runs: 0, totalKills: 0, bestTime: 0, chestsOpened: 0, totalCoins: 0, deaths: 0 },
     settings: defaultSettings(),
     updatedAt: Date.now(),
@@ -82,6 +101,21 @@ const numRecord = (v: unknown): Record<string, number> => {
   }
   return out;
 };
+
+export const MAX_CHAR_LEVEL = 10;
+
+function parseCharacters(v: unknown, owned: string[]): Record<string, CharacterProgress> {
+  const out: Record<string, CharacterProgress> = {};
+  const src = v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {};
+  for (const id of owned) {
+    const c = (src[id] ?? {}) as Record<string, unknown>;
+    out[id] = {
+      level: Math.floor(num(c.level, 1, 1, MAX_CHAR_LEVEL)),
+      shards: Math.floor(num(c.shards, 0)),
+    };
+  }
+  return out;
+}
 
 /** Valida datos desconocidos (IndexedDB o JSON importado) y rellena lo que falte. */
 export function parseMeta(raw: unknown): MetaState {
@@ -110,6 +144,15 @@ export function parseMeta(raw: unknown): MetaState {
     selectedCharacter,
     selectedMap,
     bossesDefeated: numRecord(r.bossesDefeated),
+    characters: parseCharacters(r.characters, unlockedCharacters),
+    gacha: (() => {
+      const g = (r.gacha ?? {}) as Record<string, unknown>;
+      return {
+        pulls: Math.floor(num(g.pulls, 0)),
+        sinceEpic: Math.floor(num(g.sinceEpic, 0)),
+        sinceMythic: Math.floor(num(g.sinceMythic, 0)),
+      };
+    })(),
     stats: {
       runs: Math.floor(num(s.runs, 0)),
       totalKills: Math.floor(num(s.totalKills, 0)),

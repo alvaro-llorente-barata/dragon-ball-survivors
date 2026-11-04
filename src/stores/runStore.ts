@@ -16,9 +16,9 @@ export interface HudState {
   coins: number;
   weapons: { id: string; name: string; level: number; max: number }[];
   passives: { id: string; name: string; level: number; max: number }[];
-  formName: string;
-  formColor: number;
-  nextForm: { name: string; ready: boolean; reason: string; kiCost: number } | null;
+  charName: string;
+  stars: number;
+  auraColor: number;
   ultimate: { name: string; kiCost: number; ready: boolean; cooldown: number };
   dodgeCooldown: number;
   buffs: { id: string; label: string; remaining: number }[];
@@ -29,7 +29,10 @@ export interface HudState {
 
 export interface MinimapState {
   bg: string;
-  worldSize: number;
+  /** centro y semilado (píxeles de mundo) de la zona que muestra el minimapa */
+  cx: number;
+  cy: number;
+  extent: number;
   player: { x: number; y: number };
   pois: { x: number; y: number; type: string }[];
   chests: { x: number; y: number; rarity: ChestRarity }[];

@@ -81,13 +81,6 @@ export function TouchControls() {
         {!stick && <div className="absolute bottom-8 left-8 text-xs text-white/50">Arrastra para moverte</div>}
       </div>
       <div className="absolute bottom-6 right-4 flex flex-col items-end gap-3">
-        <button
-          className={`${btn} ${hud?.nextForm?.ready ? 'border-amber-300 bg-amber-500/50' : 'border-white/30 bg-black/40'}`}
-          onPointerDown={() => bridge.commands?.transform()}
-          aria-label="Transformarse"
-        >
-          E<br />Trans.
-        </button>
         <div className="flex gap-3">
           <button
             className={`${btn} ${hud?.ultimate.ready ? 'border-sky-300 bg-sky-500/50' : 'border-white/30 bg-black/40'}`}

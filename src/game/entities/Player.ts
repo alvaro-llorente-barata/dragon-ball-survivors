@@ -30,7 +30,6 @@ export class Player {
     const body = this.sprite.body as Phaser.Physics.Arcade.Body;
     body.setSize(10, 7);
     body.setOffset(5, 16);
-    body.setCollideWorldBounds(true);
     this.auraSparks = scene.add.particles(0, 0, 'spark', {
       follow: this.sprite,
       followOffset: { x: 0, y: 10 },

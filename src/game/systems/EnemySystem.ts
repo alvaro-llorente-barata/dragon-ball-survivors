@@ -76,15 +76,9 @@ export class EnemySystem {
     const cam = this.scene.cameras.main;
     const radius = Math.hypot(cam.width / cam.zoom, cam.height / cam.zoom) / 2 + extra;
     const p = this.scene.player;
-    const size = this.scene.world.worldSize;
-    for (let i = 0; i < 8; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const x = p.x + Math.cos(a) * radius;
-      const y = p.y + Math.sin(a) * radius;
-      if (x < 80 || y < 80 || x > size - 80 || y > size - 80) continue;
-      return { x, y };
-    }
-    return null;
+    // Mundo infinito: cualquier dirección vale (los guerreros vuelan sobre el agua).
+    const a = Math.random() * Math.PI * 2;
+    return { x: p.x + Math.cos(a) * radius, y: p.y + Math.sin(a) * radius };
   }
 
   update(dt: number, now: number): void {

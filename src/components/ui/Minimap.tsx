@@ -28,30 +28,38 @@ export function Minimap() {
     }
     const c = canvasRef.current?.getContext('2d');
     if (!c) return;
-    const k = SIZE / mm.worldSize;
+    const k = SIZE / (mm.extent * 2);
+    const mx = (x: number) => (x - mm.cx + mm.extent) * k;
+    const my = (y: number) => (y - mm.cy + mm.extent) * k;
+    const inView = (x: number, y: number) => mx(x) >= 0 && mx(x) <= SIZE && my(y) >= 0 && my(y) <= SIZE;
     c.imageSmoothingEnabled = false;
     c.clearRect(0, 0, SIZE, SIZE);
     if (bgRef.current?.complete) c.drawImage(bgRef.current, 0, 0, SIZE, SIZE);
     c.fillStyle = 'rgba(0,0,0,0.25)';
     c.fillRect(0, 0, SIZE, SIZE);
     for (const p of mm.pois) {
+      if (!inView(p.x, p.y)) continue;
       c.fillStyle = POI_COLORS[p.type] ?? '#fff';
-      c.fillRect(p.x * k - 2, p.y * k - 2, 4, 4);
+      c.fillRect(mx(p.x) - 2, my(p.y) - 2, 4, 4);
     }
     for (const ch of mm.chests) {
+      if (!inView(ch.x, ch.y)) continue;
       c.fillStyle = hexColor(CHEST_COLORS[ch.rarity]);
-      c.fillRect(ch.x * k - 1.5, ch.y * k - 1.5, 3, 3);
+      c.fillRect(mx(ch.x) - 1.5, my(ch.y) - 1.5, 3, 3);
     }
     if (mm.boss) {
+      // Si el jefe está fuera del minimapa, se marca en el borde.
+      const bx = Math.max(3, Math.min(SIZE - 3, mx(mm.boss.x)));
+      const by = Math.max(3, Math.min(SIZE - 3, my(mm.boss.y)));
       c.fillStyle = '#ff2a2a';
       c.beginPath();
-      c.arc(mm.boss.x * k, mm.boss.y * k, 3.5, 0, Math.PI * 2);
+      c.arc(bx, by, 3.5, 0, Math.PI * 2);
       c.fill();
     }
     c.fillStyle = '#ffffff';
     c.strokeStyle = '#000';
     c.beginPath();
-    c.arc(mm.player.x * k, mm.player.y * k, 3, 0, Math.PI * 2);
+    c.arc(mx(mm.player.x), my(mm.player.y), 3, 0, Math.PI * 2);
     c.fill();
     c.stroke();
   }, [mm]);

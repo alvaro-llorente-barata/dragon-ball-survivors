@@ -1,12 +1,11 @@
 import type { CharacterDef, Saga } from '../types';
-import { goku } from './goku';
+import { GOKU_VERSIONS } from './goku';
 
 /**
- * Catálogo de personajes jugables.
- * Solo se añaden aquí personajes con ataques y transformaciones funcionales.
- * Para añadir uno nuevo: crea un archivo como goku.ts y regístralo en esta lista.
+ * Catálogo de personajes jugables. Solo personajes con ataques funcionales.
+ * Para añadir uno: crea un archivo como goku.ts y añádelo aquí; aparecerá en las invocaciones.
  */
-export const CHARACTERS: CharacterDef[] = [goku];
+export const CHARACTERS: CharacterDef[] = [...GOKU_VERSIONS];
 
 export const SAGA_NAMES: Record<Saga, string> = {
   dragonball: 'Dragon Ball',
@@ -18,6 +17,14 @@ export const SAGA_NAMES: Record<Saga, string> = {
   super: 'Dragon Ball Super',
   daima: 'Dragon Ball Daima',
   movies: 'Películas',
+};
+
+export const RARITY_NAMES: Record<string, string> = {
+  common: 'Común',
+  rare: 'Raro',
+  epic: 'Épico',
+  legendary: 'Legendario',
+  mythic: 'Mítico',
 };
 
 export function getCharacter(id: string): CharacterDef {

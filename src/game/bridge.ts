@@ -23,7 +23,6 @@ export interface GameCommands {
   abandon(): void;
   dodge(): void;
   ultimate(): void;
-  transform(): void;
 }
 
 export const bridge: { commands: GameCommands | null } = { commands: null };
