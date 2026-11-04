@@ -117,7 +117,7 @@ describe('banners por saga', () => {
   });
   it('completar una saga da su premio una sola vez', () => {
     const all = charactersOfSaga('daima').map((c) => c.id);
-    const m = { ...defaultMeta(), unlockedCharacters: ['goku', ...all] };
+    const m = { ...defaultMeta(), tickets: 0, unlockedCharacters: ['goku', ...all] };
     const a = claimSagaRewards(m);
     expect(a.completed).toContain('daima');
     expect(a.meta.tickets).toBe(SAGA_REWARD.tickets);
@@ -146,7 +146,8 @@ describe('guardado y migración', () => {
     };
     const m = parseMeta(old);
     expect(m.coins).toBe(1234);
-    expect(m.tickets).toBe(7);
+    // migra los 7 tickets originales y suma el regalo de bienvenida (1000).
+    expect(m.tickets).toBe(1007);
     expect(m.unlockedCharacters).toEqual(['goku', 'goku_ssj', 'goku_ui']);
     expect(m.characters.goku.level).toBe(3);
     expect(m.selectedCharacter).toBe('goku_ui');

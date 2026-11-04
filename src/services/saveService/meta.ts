@@ -1,7 +1,14 @@
 /** Partida permanente (lo que se guarda en IndexedDB). Lógica pura y validación. */
 
-/** v1 = 0.1 / 0.2 · v2 = 2.0 (banners por saga, favoritos, dificultad). Las v1 se migran sin perder nada. */
-export const SAVE_VERSION = 2;
+/**
+ * v1 = 0.1 / 0.2 · v2 = 2.0 (banners por saga, favoritos, dificultad) ·
+ * v3 = regalo de 1000 tickets de bienvenida (se aplica una vez a los guardados < 3).
+ * Todas las versiones anteriores se migran sin perder nada.
+ */
+export const SAVE_VERSION = 3;
+
+/** Tickets de bienvenida que recibe tanto un jugador nuevo como un guardado antiguo (una sola vez). */
+export const WELCOME_TICKETS = 1000;
 
 export type Difficulty = 'normal' | 'hard' | 'nightmare';
 
@@ -86,7 +93,7 @@ export function defaultMeta(): MetaState {
   return {
     version: SAVE_VERSION,
     coins: 0,
-    tickets: 1000,
+    tickets: WELCOME_TICKETS,
     fragments: 0,
     accountXp: 0,
     upgrades: {},
@@ -143,6 +150,9 @@ export function parseMeta(raw: unknown): MetaState {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Formato de partida no válido');
   const r = raw as Record<string, unknown>;
   if (typeof r.version !== 'number' || r.version > SAVE_VERSION) throw new Error('Versión de partida no compatible');
+  // Regalo de bienvenida para guardados anteriores a la v3: se suma una sola vez.
+  // Al guardarse con la versión actual, no se vuelve a aplicar.
+  const welcomeBonus = r.version < 3 ? WELCOME_TICKETS : 0;
   const s = (r.stats ?? {}) as Record<string, unknown>;
   const st = (r.settings ?? {}) as Record<string, unknown>;
   const unlockedCharacters = strArr(r.unlockedCharacters, d.unlockedCharacters);
@@ -155,7 +165,7 @@ export function parseMeta(raw: unknown): MetaState {
   return {
     version: SAVE_VERSION,
     coins: Math.floor(num(r.coins, 0)),
-    tickets: Math.floor(num(r.tickets, 0)),
+    tickets: Math.floor(num(r.tickets, 0)) + welcomeBonus,
     fragments: Math.floor(num(r.fragments, 0)),
     accountXp: Math.floor(num(r.accountXp, 0)),
     upgrades: numRecord(r.upgrades),

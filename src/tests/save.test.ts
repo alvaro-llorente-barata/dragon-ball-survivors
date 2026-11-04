@@ -34,7 +34,8 @@ describe('guardado', () => {
   it('limpia valores corruptos', () => {
     const m = parseMeta({ version: 1, coins: -50, tickets: 'x', upgrades: { damage: -1, maxHp: 3 }, unlockedMaps: ['namek'] });
     expect(m.coins).toBe(0);
-    expect(m.tickets).toBe(0);
+    // tickets corruptos -> 0, más el regalo de bienvenida al migrar desde v1.
+    expect(m.tickets).toBe(1000);
     expect(m.upgrades.damage).toBeUndefined();
     expect(m.upgrades.maxHp).toBe(3);
     expect(m.unlockedMaps).toContain('earth');
@@ -46,7 +47,8 @@ describe('progresión permanente', () => {
   it('aplica monedas, tickets y estadísticas', () => {
     const { meta } = applyRunResult(defaultMeta(), result());
     expect(meta.coins).toBe(140);
-    expect(meta.tickets).toBe(2);
+    // defaultMeta otorga 1000 tickets de bienvenida; la partida suma 2 más.
+    expect(meta.tickets).toBe(1002);
     expect(meta.stats.runs).toBe(1);
     expect(meta.stats.bestTime).toBe(300);
     expect(meta.stats.deaths).toBe(1);
