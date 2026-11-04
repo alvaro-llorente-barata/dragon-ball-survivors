@@ -292,6 +292,75 @@ export const BOSSES: Record<string, BossDef> = {
   },
 };
 
+// ---------- 2.0: jefes de mitad de partida y jefes definitivos (minuto 30) ----------
+Object.assign(BOSSES, {
+  cell: {
+    id: 'cell',
+    name: 'Cell',
+    mini: false,
+    hp: 16000,
+    damage: 28,
+    speed: 95,
+    scale: 2.3,
+    chest: 'legendary',
+    sprite: { skin: '#4fb04a', hair: '#2a6a2a', hairStyle: 'crest', gi: '#3a8a3a', giAccent: '#3a8a3a', belt: '#1b1b24', pants: '#1b1b24', boots: '#1b1b24', eye: '#ff4ad0', tail: '#3a8a3a', mark: '#1b1b24' },
+    phases: [
+      { hpBelow: 1, name: 'Cell imperfecto', speedMul: 1, patternCooldown: 1700, patterns: ['volley', 'dash', 'summon'], summonId: 'cell_jr', color: 0x6aff6a },
+      { hpBelow: 0.66, name: 'Cell semiperfecto', sprite: { build: 'bulky' }, scale: 2.8, speedMul: 0.95, patternCooldown: 1500, patterns: ['ground_burst', 'beam', 'ring'], color: 0x6aff6a },
+      { hpBelow: 0.33, name: 'Cell perfecto', sprite: { build: 'normal', tail: undefined, skin: '#6ac86a' }, scale: 2.3, speedMul: 1.3, patternCooldown: 1200, patterns: ['cross_beam', 'spiral', 'big_ball', 'summon'], summonId: 'cell_jr', color: 0x5ec8ff, attackName: 'Kamehameha Solar' },
+    ],
+  },
+  majin_buu: {
+    id: 'majin_buu',
+    name: 'Majin Buu',
+    mini: false,
+    hp: 22000,
+    damage: 30,
+    speed: 88,
+    scale: 2.8,
+    chest: 'legendary',
+    sprite: { skin: '#f29ac8', hair: '#f29ac8', hairStyle: 'buu', gi: '#2a2a3a', giAccent: '#2a2a3a', belt: '#ffd84a', pants: '#f0f0f0', boots: '#ffd84a', eye: '#16161c', cape: '#5a2a8a', mark: 'M', build: 'bulky' },
+    phases: [
+      { hpBelow: 1, name: 'Majin Buu', speedMul: 1, patternCooldown: 1600, patterns: ['dash', 'volley', 'ground_burst'], color: 0xff8ad8 },
+      { hpBelow: 0.6, name: 'Super Buu', sprite: { build: 'normal', cape: undefined, gi: '#f29ac8' }, scale: 2.4, speedMul: 1.25, patternCooldown: 1300, patterns: ['spiral', 'beam', 'dash', 'summon'], summonId: 'majin_guardian', color: 0xff8ad8 },
+      { hpBelow: 0.25, name: 'Kid Buu', sprite: { build: 'slim', cape: undefined, gi: '#f29ac8' }, scale: 1.9, speedMul: 1.6, patternCooldown: 1000, patterns: ['cross_beam', 'dash', 'big_ball', 'ring'], color: 0xff4ab8, attackName: 'Bomba planetaria' },
+    ],
+  },
+  broly_fp: {
+    id: 'broly_fp',
+    name: 'Broly Full Power',
+    mini: false,
+    hp: 60000,
+    damage: 42,
+    speed: 100,
+    scale: 3.4,
+    chest: 'divine',
+    sprite: { skin: '#e8b88a', hair: '#1b1b24', hairStyle: 'wild', gi: '#e8b8a0', giAccent: '#d4a020', belt: '#c62828', pants: '#f0f0e0', boots: '#d4a020', eye: '#16161c', build: 'bulky', earring: '#ffe14d' },
+    phases: [
+      { hpBelow: 1, name: 'Broly', speedMul: 1, patternCooldown: 1500, patterns: ['dash', 'ground_burst', 'volley'], color: 0x6aff4a },
+      { hpBelow: 0.7, name: 'Broly desatado', sprite: { eye: '#ff3a3a' }, scale: 3.8, speedMul: 1.2, patternCooldown: 1200, patterns: ['spiral', 'dash', 'big_ball'], color: 0x6aff4a, attackName: 'Eraser Cannon' },
+      { hpBelow: 0.4, name: 'Broly Super Saiyan', sprite: { hair: '#ffe14d', eye: '#1fa58f' }, scale: 4, speedMul: 1.35, patternCooldown: 1000, patterns: ['cross_beam', 'ground_burst', 'dash', 'ring'], color: 0xffd84a },
+      { hpBelow: 0.15, name: 'Broly Full Power', sprite: { hair: '#d8ff6a', eye: '#ffffff' }, scale: 4.4, speedMul: 1.5, patternCooldown: 800, patterns: ['big_ball', 'spiral', 'cross_beam', 'dash'], color: 0x9aff4a, attackName: 'Gigantic Meteor' },
+    ],
+  },
+  jiren_full: {
+    id: 'jiren_full',
+    name: 'Jiren a máxima potencia',
+    mini: false,
+    hp: 56000,
+    damage: 40,
+    speed: 110,
+    scale: 2.6,
+    chest: 'divine',
+    sprite: { skin: '#d8b8b0', hair: '#d8b8b0', hairStyle: 'bald', gi: '#d84a3a', giAccent: '#d84a3a', belt: '#1b1b24', pants: '#1b1b24', boots: '#d84a3a', eye: '#16161c', build: 'bulky' },
+    phases: [
+      { hpBelow: 1, name: 'Jiren', speedMul: 1, patternCooldown: 1400, patterns: ['dash', 'ring', 'ground_burst'], color: 0xff4a4a },
+      { hpBelow: 0.6, name: 'Jiren (Power Impact)', speedMul: 1.25, patternCooldown: 1100, patterns: ['spiral', 'cross_beam', 'dash'], color: 0xff4a4a, attackName: 'Power Impact' },
+      { hpBelow: 0.25, name: 'Jiren a máxima potencia', scale: 3, speedMul: 1.5, patternCooldown: 800, patterns: ['big_ball', 'cross_beam', 'spiral', 'dash'], color: 0xff2a2a, attackName: 'Ira de Jiren' },
+    ],
+  },
+} satisfies Record<string, BossDef>);
+
 export function getBoss(id: string): BossDef {
   const b = BOSSES[id];
   if (!b) throw new Error(`Jefe desconocido: ${id}`);

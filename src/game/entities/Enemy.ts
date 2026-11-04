@@ -21,6 +21,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   hitFlashUntil = 0;
   baseTint = 0xffffff;
   textureBase = '';
+  stunUntil = 0;
+  slowUntil = 0;
+  /** protegido por un Guerrero Majin cercano (recibe menos daño) */
+  guardedUntil = 0;
+  dashUntil = 0;
+  /** 1 o -1: sentido en el que rodea al jugador */
+  orbitDir = 1;
+  burstLeft = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, texture: string, frame?: string | number) {
     super(scene, x, y, texture, frame);
@@ -49,6 +57,12 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.fuseAt = 0;
     this.hitFlashUntil = 0;
     this.jitter = (Math.random() - 0.5) * 0.7;
+    this.stunUntil = 0;
+    this.slowUntil = 0;
+    this.guardedUntil = 0;
+    this.dashUntil = 0;
+    this.burstLeft = 0;
+    this.orbitDir = Math.random() < 0.5 ? 1 : -1;
     this.baseTint = elite ? 0xffb0ff : 0xffffff;
     this.clearTint();
     if (elite) this.setTint(this.baseTint);

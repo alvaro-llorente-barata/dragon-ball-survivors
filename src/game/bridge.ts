@@ -1,3 +1,4 @@
+import type { Difficulty } from '../data/types';
 import type { MetaBonuses } from './logic/stats';
 import type { RunResult } from '../services/progressionService';
 import type { Settings } from '../services/saveService/meta';
@@ -9,7 +10,7 @@ export interface RunConfig {
   seed: number;
   meta: MetaBonuses;
   settings: Settings;
-  everDefeated: string[];
+  difficulty: Difficulty;
   /** Guarda el resultado y devuelve los mapas desbloqueados en esta partida. */
   onEnd: (result: RunResult) => string[];
 }
@@ -17,12 +18,18 @@ export interface RunConfig {
 /** Órdenes que los menús de React envían a la escena de juego. */
 export interface GameCommands {
   chooseUpgrade(id: string): void;
+  reroll(): void;
   closeModal(): void;
   pause(): void;
   resume(): void;
   abandon(): void;
   dodge(): void;
   ultimate(): void;
+  transform(): void;
+  selectSlot(i: number): void;
+  /** une el hueco b dentro del a (gasta un Vínculo de Ki) */
+  link(a: number, b: number): void;
+  useLink(): void;
 }
 
 export const bridge: { commands: GameCommands | null } = { commands: null };

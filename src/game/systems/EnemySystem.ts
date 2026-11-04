@@ -4,7 +4,8 @@ import type { BossDef, EnemyDef } from '../../data/types';
 import { audio } from '../../services/audioService';
 import { DEPTH, MAX_ENEMIES_POOL, MAX_ENEMY_BULLETS } from '../constants';
 import { Enemy } from '../entities/Enemy';
-import { eliteChance, enemyDamageMul, enemyHpMul, maxEnemies, pickEnemyId, spawnRatePerSecond } from '../logic/spawn';
+import { pointInBeam, pointInCircle } from '../logic/combat';
+import { eliteChance, enemyDamageMul, enemyHpMul, enemySpeedMul, maxEnemies, pickEnemyId, spawnRatePerSecond } from '../logic/spawn';
 import type { GameScene } from '../scenes/GameScene';
 
 export class EnemyBullet extends Phaser.Physics.Arcade.Image {
@@ -21,10 +22,12 @@ export class EnemySystem {
   spawnMul = 1;
   extraPool: { id: string; weight: number }[] = [];
   frozenUntil = 0;
+  private nextEncircle = 0;
 
   constructor(private scene: GameScene) {
     this.group = scene.physics.add.group({ classType: Enemy, maxSize: MAX_ENEMIES_POOL, runChildUpdate: false });
     this.bullets = scene.physics.add.group({ classType: EnemyBullet, maxSize: MAX_ENEMY_BULLETS, runChildUpdate: false });
+    this.nextEncircle = scene.diff.encircleEvery + 60;
   }
 
   textureFor(def: EnemyDef): string {
@@ -42,11 +45,13 @@ export class EnemySystem {
   spawn(id: string, x: number, y: number, forceElite = false): Enemy | null {
     const def = getEnemy(id);
     const t = this.scene.run.time;
-    const elite = forceElite || Math.random() < eliteChance(t);
+    const d = this.scene.diff;
+    const elite = forceElite || Math.random() < eliteChance(t, d);
     const e = this.group.get(x, y, this.textureFor(def), '4') as Enemy | null;
     if (!e) return null;
-    const hp = Math.round(def.hp * enemyHpMul(t) * (elite ? 4 : 1));
-    e.activate(def, this.textureFor(def), x, y, hp, def.damage * enemyDamageMul(t) * (elite ? 1.4 : 1), elite);
+    const hp = Math.round(def.hp * enemyHpMul(t, d) * (elite ? 4 : 1));
+    e.activate(def, this.textureFor(def), x, y, hp, def.damage * enemyDamageMul(t, d) * (elite ? 1.4 : 1), elite);
+    e.speed = def.speed * enemySpeedMul(t, d) * (elite ? 1.1 : 1);
     e.setDepth(DEPTH.entity + y);
     return e;
   }
@@ -61,7 +66,7 @@ export class EnemySystem {
       x,
       y,
       hp,
-      def.damage,
+      def.damage * this.scene.diff.damage,
       false,
     );
     e.boss = def;
@@ -71,28 +76,41 @@ export class EnemySystem {
     return e;
   }
 
-  /** Punto de aparición fuera de la cámara, dentro del mundo y sin obstáculos. */
-  ringPoint(extra = 80): { x: number; y: number } | null {
+  /** Punto de aparición fuera de la cámara. */
+  ringPoint(extra = 80, angle?: number): { x: number; y: number } {
     const cam = this.scene.cameras.main;
     const radius = Math.hypot(cam.width / cam.zoom, cam.height / cam.zoom) / 2 + extra;
     const p = this.scene.player;
-    // Mundo infinito: cualquier dirección vale (los guerreros vuelan sobre el agua).
-    const a = Math.random() * Math.PI * 2;
+    const a = angle ?? Math.random() * Math.PI * 2;
     return { x: p.x + Math.cos(a) * radius, y: p.y + Math.sin(a) * radius };
+  }
+
+  /** Oleada que aparece en círculo alrededor del jugador (obliga a abrir hueco). */
+  encircle(id: string, n: number): void {
+    for (let i = 0; i < n; i++) {
+      const pt = this.ringPoint(-60, (i / n) * Math.PI * 2);
+      this.spawn(id, pt.x, pt.y);
+    }
+    this.scene.toast('⚠ ¡Te están rodeando!', '#ff8a6a');
+    audio.play('warning');
   }
 
   update(dt: number, now: number): void {
     const t = this.scene.run.time;
-    // Aparición progresiva
-    this.spawnAcc += dt * spawnRatePerSecond(t) * this.spawnMul;
-    const cap = maxEnemies(t) * Math.min(1.6, this.spawnMul);
+    const d = this.scene.diff;
+    this.spawnAcc += dt * spawnRatePerSecond(t, d) * this.spawnMul;
+    const cap = maxEnemies(t, d) * Math.min(1.6, this.spawnMul);
     const pool = [...this.scene.mapDef.enemies, ...this.extraPool.map((e) => ({ ...e, from: 0 }))];
     while (this.spawnAcc >= 1) {
       this.spawnAcc -= 1;
       if (this.count() >= cap) break;
       const pt = this.ringPoint();
-      if (!pt) continue;
       this.spawn(pickEnemyId(pool, t, Math.random), pt.x, pt.y);
+    }
+    if (t >= this.nextEncircle) {
+      this.nextEncircle = t + d.encircleEvery;
+      const id = pickEnemyId(pool, t, Math.random);
+      this.encircle(id, Math.min(40, 14 + Math.floor(t / 40)));
     }
 
     const px = this.scene.player.x;
@@ -106,9 +124,9 @@ export class EnemySystem {
         this.updateFlash(e, now);
         continue;
       }
-      if (frozen) {
+      if (frozen || now < e.stunUntil) {
         e.setVelocity(0, 0);
-        e.setTint(0x8ad8ff);
+        e.setTint(frozen ? 0x8ad8ff : 0xfff6a0);
         e.anims.pause();
         continue;
       } else if (e.anims.isPaused) {
@@ -116,27 +134,117 @@ export class EnemySystem {
       }
       this.updateFlash(e, now);
       e.setDepth(DEPTH.entity + e.y);
-      if (now < e.kbUntil) continue;
+      if (now < e.kbUntil || now < e.dashUntil) continue;
       const dx = px - e.x;
       const dy = py - e.y;
       const dist = Math.hypot(dx, dy) || 1;
-      // Los enemigos muy lejanos se reubican cerca del jugador.
       if (dist > 1700) {
         const pt = this.ringPoint();
-        if (pt) e.setPosition(pt.x, pt.y);
+        e.setPosition(pt.x, pt.y);
         continue;
       }
-      const ang = Math.atan2(dy, dx) + e.jitter * Math.min(1, dist / 300);
-      let speed = e.speed;
+      let ang = Math.atan2(dy, dx) + e.jitter * Math.min(1, dist / 300);
+      let speed = e.speed * (now < e.slowUntil ? 0.45 : 1);
       const def = e.def;
+      const dmgMul = enemyDamageMul(t, d);
       switch (def.behavior) {
-        case 'ranged': {
+        case 'ranged':
+        case 'burst': {
           const range = def.ranged?.range ?? 260;
           if (dist < range * 0.55) speed = -speed * 0.6;
           else if (dist < range * 0.85) speed = 0;
           if (def.ranged && dist < range && now >= e.nextActionAt) {
+            const shots = def.behavior === 'burst' ? 3 : 1;
             e.nextActionAt = now + def.ranged.cooldown * (0.8 + Math.random() * 0.4);
-            this.fireBullet(e.x, e.y - 10, Math.atan2(dy, dx), def.ranged.bulletSpeed, def.ranged.damage * enemyDamageMul(t), 0xff6a3a);
+            const base = Math.atan2(dy, dx);
+            for (let i = 0; i < shots; i++) {
+              this.scene.time.delayedCall(i * 140, () => {
+                if (e.active) this.fireBullet(e.x, e.y - 10, base + (Math.random() - 0.5) * 0.15, def.ranged!.bulletSpeed, def.ranged!.damage * dmgMul, 0xff6a3a);
+              });
+            }
+          }
+          break;
+        }
+        case 'flanker': {
+          // Rodea al jugador a media distancia y entra de golpe.
+          if (dist < 260 && now < e.nextActionAt) ang = Math.atan2(dy, dx) + (Math.PI / 2.2) * e.orbitDir;
+          else if (now >= e.nextActionAt) {
+            e.nextActionAt = now + 2600 + Math.random() * 1200;
+            speed *= 1.6;
+          }
+          break;
+        }
+        case 'charger': {
+          if (dist < 320 && now >= e.nextActionAt) {
+            e.nextActionAt = now + 3800;
+            const a = Math.atan2(dy, dx);
+            const len = Math.min(420, dist + 140);
+            e.setVelocity(0, 0);
+            e.dashUntil = now + 650;
+            this.scene.telegraphs.rect(e.x, e.y, a, len, 16, 600, () => {
+              if (!e.active) return;
+              e.setVelocity(Math.cos(a) * 700, Math.sin(a) * 700);
+              e.dashUntil = this.scene.time.now + (len / 700) * 1000;
+            }, 0xff8a3a);
+            continue;
+          }
+          break;
+        }
+        case 'beamer': {
+          const range = def.ranged?.range ?? 400;
+          if (dist < range * 0.6) speed = -speed * 0.5;
+          else if (dist < range) speed *= 0.3;
+          if (def.ranged && dist < range && now >= e.nextActionAt) {
+            e.nextActionAt = now + def.ranged.cooldown;
+            e.dashUntil = now + 1000;
+            e.setVelocity(0, 0);
+            const a = Math.atan2(dy, dx);
+            const ox = e.x;
+            const oy = e.y;
+            const dmg = def.ranged.damage * dmgMul;
+            this.scene.telegraphs.rect(ox, oy, a, range + 80, 14, 900, () => {
+              if (!e.active) return;
+              const beam = this.scene.add.image(ox, oy, 'beam').setOrigin(0, 0.5).setRotation(a).setTint(0xff3a3a).setBlendMode('ADD').setDepth(DEPTH.effect).setDisplaySize(range + 80, 30);
+              this.scene.tweens.add({ targets: beam, alpha: 0, duration: 260, onComplete: () => beam.destroy() });
+              audio.play('beam');
+              const p = this.scene.player;
+              if (pointInBeam(p.x, p.y, ox, oy, a, range + 80, 18)) this.scene.damagePlayer(dmg);
+            }, 0xff3a3a);
+            continue;
+          }
+          break;
+        }
+        case 'bomber': {
+          const range = def.ranged?.range ?? 320;
+          if (dist < range * 0.6) speed = -speed * 0.6;
+          else if (dist < range) speed = 0;
+          if (def.ranged && dist < range && now >= e.nextActionAt) {
+            e.nextActionAt = now + def.ranged.cooldown;
+            const dmg = def.ranged.damage * dmgMul;
+            const p = this.scene.player;
+            // Zona peligrosa donde está el jugador y otra donde irá.
+            const vx = (p.sprite.body as Phaser.Physics.Arcade.Body).velocity;
+            const spots = [
+              { x: p.x, y: p.y },
+              { x: p.x + vx.x * 0.8, y: p.y + vx.y * 0.8 },
+            ];
+            for (const s of spots) {
+              this.scene.telegraphs.circle(s.x, s.y, 60, 1200, () => {
+                this.scene.effects.explosion(s.x, s.y, 60, 0xc84aff, 0.003);
+                if (pointInCircle(this.scene.player.x, this.scene.player.y, s.x, s.y, 62)) this.scene.damagePlayer(dmg);
+              }, 0xc84aff);
+            }
+          }
+          break;
+        }
+        case 'guardian': {
+          if (dist < 180) speed *= 0.6;
+          if (now >= e.nextActionAt) {
+            e.nextActionAt = now + 600;
+            for (const o of children) {
+              if (o.active && o !== e && !o.boss && Math.hypot(o.x - e.x, o.y - e.y) < 170) o.guardedUntil = now + 800;
+            }
+            if (Math.random() < 0.25) this.scene.effects.ring(e.x, e.y, 170, 0x8a6aff, 400);
           }
           break;
         }
@@ -179,7 +287,7 @@ export class EnemySystem {
           if (now >= e.nextActionAt) {
             e.nextActionAt = now + 5200;
             if (this.count() < cap) {
-              for (let i = 0; i < 2; i++) this.spawn('saibaman', e.x + Phaser.Math.Between(-30, 30), e.y + Phaser.Math.Between(-30, 30));
+              for (let i = 0; i < 3; i++) this.spawn('saibaman', e.x + Phaser.Math.Between(-30, 30), e.y + Phaser.Math.Between(-30, 30));
               this.scene.effects.smoke(e.x, e.y, 0x6ac83a, 8);
             }
           }
@@ -192,7 +300,6 @@ export class EnemySystem {
       e.setFlipX(dx < 0);
     }
 
-    // Balas enemigas
     for (const b of this.bullets.getChildren() as EnemyBullet[]) {
       if (b.active && now >= b.expireAt) b.disableBody(true, true);
     }
@@ -201,7 +308,8 @@ export class EnemySystem {
   private updateFlash(e: Enemy, now: number): void {
     if (now < e.hitFlashUntil) e.setTintFill(0xffffff);
     else if (e.fuseAt === 0) {
-      if (e.baseTint === 0xffffff) e.clearTint();
+      if (now < e.guardedUntil) e.setTint(0xb0a0ff);
+      else if (e.baseTint === 0xffffff) e.clearTint();
       else e.setTint(e.baseTint);
     }
   }
@@ -221,8 +329,9 @@ export class EnemySystem {
   damage(e: Enemy, amount: number, crit: boolean, fromX: number, fromY: number, knock = 0): boolean {
     if (!e.active) return false;
     if (e.boss && this.scene.bosses.isInvulnerable()) return false;
-    e.hp -= amount;
     const now = this.scene.time.now;
+    if (now < e.guardedUntil) amount = Math.max(1, Math.round(amount * 0.5));
+    e.hp -= amount;
     e.hitFlashUntil = now + 70;
     this.scene.effects.damageNumber(e.x, e.y - 10 * e.scaleY, amount, crit);
     if (knock > 0 && !e.boss) {
@@ -236,6 +345,13 @@ export class EnemySystem {
       return true;
     }
     return false;
+  }
+
+  /** Paraliza o ralentiza (los jefes solo se ralentizan un poco). */
+  applyControl(e: Enemy, stun?: number, slow?: number): void {
+    const now = this.scene.time.now;
+    if (stun && !e.boss) e.stunUntil = Math.max(e.stunUntil, now + stun * 1000);
+    if (slow) e.slowUntil = Math.max(e.slowUntil, now + slow * 1000 * (e.boss ? 0.3 : 1));
   }
 
   kill(e: Enemy, byPlayer: boolean): void {
@@ -260,8 +376,8 @@ export class EnemySystem {
     }
   }
 
-  /** Daña a todos los enemigos en un círculo (explosiones, Kiai, Genkidama). */
-  damageInCircle(x: number, y: number, r: number, amountFn: () => { amount: number; crit: boolean }, knock: number): number {
+  /** Daña a todos los enemigos en un círculo (explosiones, ondas, definitivos). */
+  damageInCircle(x: number, y: number, r: number, amountFn: () => { amount: number; crit: boolean }, knock: number, onHit?: (e: Enemy) => void): number {
     let hits = 0;
     const r2 = r * r;
     for (const e of this.group.getChildren() as Enemy[]) {
@@ -271,6 +387,7 @@ export class EnemySystem {
       const er = e.boss ? 30 : 0;
       if (dx * dx + dy * dy <= r2 + er * er + 2 * r * er) {
         const d = amountFn();
+        onHit?.(e);
         this.damage(e, d.amount, d.crit, x, y, knock);
         hits++;
       }

@@ -14,17 +14,27 @@ export interface HudState {
   time: number;
   kills: number;
   coins: number;
-  weapons: { id: string; name: string; level: number; max: number }[];
+  slots: SlotView[];
+  selected: number;
+  links: number;
   passives: { id: string; name: string; level: number; max: number }[];
   charName: string;
   stars: number;
   auraColor: number;
+  formName: string | null;
+  nextForm: { name: string; ready: boolean; reason: string; kiCost: number } | null;
+  stage: string;
+  difficulty: string;
   ultimate: { name: string; kiCost: number; ready: boolean; cooldown: number };
   dodgeCooldown: number;
   buffs: { id: string; label: string; remaining: number }[];
   shieldHits: number;
   boss: { name: string; hp: number; maxHp: number; mini: boolean } | null;
   nearestChest: { distance: number; angle: number; rarity: ChestRarity } | null;
+}
+
+export interface SlotView {
+  weapons: { id: string; name: string; level: number; max: number; evolved: boolean; color: number; cooldown: number }[];
 }
 
 export interface MinimapState {
@@ -45,7 +55,8 @@ export interface ChestRewardView {
 }
 
 export type Modal =
-  | { type: 'levelup'; choices: UpgradeChoice[]; title: string }
+  | { type: 'levelup'; choices: UpgradeChoice[]; title: string; rerolls: number }
+  | { type: 'link'; slots: SlotView[]; pairs: [number, number][]; links: number }
   | { type: 'chest'; rarity: ChestRarity; rewards: ChestRewardView[] }
   | { type: 'pause' }
   | { type: 'gameover'; result: RunResult; reason: 'death' | 'abandon'; unlockedMaps: string[] };

@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import { buyUpgrade } from '../services/economyService';
 import { applyRunResult, type RunResult } from '../services/progressionService';
 import { loadMeta, saveMeta, importJson, downloadJson } from '../services/saveService/indexedDb';
-import { defaultMeta, type MetaState, type Settings } from '../services/saveService/meta';
+import { defaultMeta, type Difficulty, type MetaState, type Settings } from '../services/saveService/meta';
 import { audio } from '../services/audioService';
-import { levelUpCharacter, summon, type SummonResult } from '../services/gachaService';
+import { claimSagaRewards, levelUpCharacter, summon, type SummonBatch } from '../services/gachaService';
+import type { Saga } from '../data/types';
 
 interface MetaStore {
   meta: MetaState;
@@ -16,7 +17,9 @@ interface MetaStore {
   buy(id: string): string | null;
   updateSettings(patch: Partial<Settings>): void;
   select(characterId: string, mapId: string): void;
-  summon(count: number): SummonResult[] | string;
+  summon(count: number, saga: Saga): SummonBatch | string;
+  toggleFavorite(id: string): void;
+  setDifficulty(d: Difficulty): void;
   levelUp(id: string): string | null;
   exportSave(): void;
   importSave(text: string): string | null;
@@ -33,7 +36,8 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
   error: null,
   load: async () => {
     try {
-      const meta = await loadMeta();
+      // Migración: los jugadores que ya tenían sagas completas reciben su premio.
+      const meta = claimSagaRewards(await loadMeta()).meta;
       audio.setVolumes(meta.settings.sfxVolume, meta.settings.musicVolume);
       set({ meta, loaded: true });
     } catch (err) {
@@ -62,15 +66,22 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
     get().set(meta);
   },
   select: (characterId, mapId) => get().set({ ...get().meta, selectedCharacter: characterId, selectedMap: mapId }),
-  summon: (count) => {
+  summon: (count, saga) => {
     try {
-      const r = summon(get().meta, count, Math.random);
+      const r = summon(get().meta, count, Math.random, saga);
       get().set(r.meta);
-      return r.results;
+      return r;
     } catch (err) {
       return err instanceof Error ? err.message : 'No se pudo invocar';
     }
   },
+  toggleFavorite: (id) => {
+    const m = get().meta;
+    if (!m.unlockedCharacters.includes(id)) return;
+    const favorites = m.favorites.includes(id) ? m.favorites.filter((f) => f !== id) : [...m.favorites, id];
+    get().set({ ...m, favorites });
+  },
+  setDifficulty: (difficulty) => get().set({ ...get().meta, difficulty }),
   levelUp: (id) => {
     const r = levelUpCharacter(get().meta, id);
     if (!r.ok) return r.reason ?? 'No se puede mejorar';

@@ -61,7 +61,7 @@ export function TouchControls() {
   return (
     <>
       <div
-        className="pointer-events-auto absolute bottom-0 left-0 h-1/2 w-1/2"
+        className="pointer-events-auto absolute bottom-24 left-0 h-[42%] w-1/2"
         style={{ touchAction: 'none' }}
         onPointerDown={down}
         onPointerMove={move}
@@ -80,7 +80,16 @@ export function TouchControls() {
         )}
         {!stick && <div className="absolute bottom-8 left-8 text-xs text-white/50">Arrastra para moverte</div>}
       </div>
-      <div className="absolute bottom-6 right-4 flex flex-col items-end gap-3">
+      <div className="absolute bottom-24 right-4 flex flex-col items-end gap-3">
+        {hud?.nextForm && (
+          <button
+            className={`${btn} ${hud.nextForm.ready ? 'border-amber-300 bg-amber-500/50' : 'border-white/30 bg-black/40'}`}
+            onPointerDown={() => bridge.commands?.transform()}
+            aria-label="Transformarse"
+          >
+            E<br />Trans.
+          </button>
+        )}
         <div className="flex gap-3">
           <button
             className={`${btn} ${hud?.ultimate.ready ? 'border-sky-300 bg-sky-500/50' : 'border-white/30 bg-black/40'}`}
@@ -95,7 +104,7 @@ export function TouchControls() {
         </div>
       </div>
       <button
-        className="pointer-events-auto absolute bottom-6 left-1/2 -translate-x-1/2 rounded-full border border-white/30 bg-black/50 px-4 py-1 text-xs"
+        className="pointer-events-auto absolute left-1/2 top-16 -translate-x-1/2 rounded-full border border-white/30 bg-black/50 px-4 py-1 text-xs"
         onPointerDown={() => bridge.commands?.pause()}
       >
         Pausa

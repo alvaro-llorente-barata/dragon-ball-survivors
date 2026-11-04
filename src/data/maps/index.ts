@@ -195,6 +195,54 @@ export const MAPS: MapDef[] = [
   },
 ];
 
+// ---------- 2.0: oleadas por tramos, enemigos con habilidades y jefe definitivo al minuto 30 ----------
+const EXTRA_ENEMIES: Record<string, EnemySpawnEntry[]> = {
+  earth: [
+    { id: 'saiyan_scout', from: 180, weight: 5 },
+    { id: 'red_ribbon_robot', from: 240, weight: 3 },
+    { id: 'frieza_elite', from: 420, weight: 3 },
+    { id: 'android_unit', from: 600, weight: 3 },
+    { id: 'babidi_mage', from: 900, weight: 3 },
+    { id: 'majin_guardian', from: 1200, weight: 2 },
+  ],
+  wasteland: [
+    { id: 'saiyan_scout', from: 120, weight: 6 },
+    { id: 'red_ribbon_robot', from: 200, weight: 3 },
+    { id: 'frieza_elite', from: 360, weight: 3 },
+    { id: 'android_unit', from: 540, weight: 3 },
+    { id: 'babidi_mage', from: 840, weight: 3 },
+    { id: 'majin_guardian', from: 1080, weight: 3 },
+  ],
+  namek: [
+    { id: 'frieza_elite', from: 120, weight: 5 },
+    { id: 'saiyan_scout', from: 200, weight: 4 },
+    { id: 'android_unit', from: 480, weight: 3 },
+    { id: 'babidi_mage', from: 780, weight: 3 },
+    { id: 'majin_guardian', from: 1080, weight: 3 },
+  ],
+};
+const EXTRA_BOSSES: Record<string, { bossId: string; at: number }[]> = {
+  earth: [
+    { bossId: 'cell', at: 840 },
+    { bossId: 'majin_buu', at: 1140 },
+    { bossId: 'broly_fp', at: 1800 },
+  ],
+  wasteland: [
+    { bossId: 'cell', at: 780 },
+    { bossId: 'majin_buu', at: 1080 },
+    { bossId: 'jiren_full', at: 1800 },
+  ],
+  namek: [
+    { bossId: 'cell', at: 840 },
+    { bossId: 'majin_buu', at: 1140 },
+    { bossId: 'broly_fp', at: 1800 },
+  ],
+};
+for (const m of MAPS) {
+  m.enemies.push(...(EXTRA_ENEMIES[m.id] ?? []));
+  m.bosses.push(...(EXTRA_BOSSES[m.id] ?? []));
+}
+
 export function getMap(id: string): MapDef {
   const m = MAPS.find((x) => x.id === id);
   if (!m) throw new Error(`Mapa desconocido: ${id}`);

@@ -1,4 +1,5 @@
 import type { CharacterDef, SpriteSpec } from '../types';
+import { form } from './builder';
 
 const gokuSprite: SpriteSpec = {
   skin: '#f2c49b',
@@ -12,7 +13,7 @@ const gokuSprite: SpriteSpec = {
   eye: '#16161c',
 };
 
-const POOL = ['ki_blast', 'rapid_punch', 'kamehameha', 'kiai', 'dragon_fist', 'ki_barrier', 'homing_ki'];
+const POOL = ['ki_blast', 'rapid_punch', 'kamehameha', 'kiai', 'dragon_fist', 'ki_barrier', 'homing_ki', 'solar_flare'];
 const saiyanBlood = { id: 'saiyan_blood', name: 'Sangre Saiyan', description: 'Hasta +30% de daño cuando tienes poca vida.' } as const;
 
 type Version = Omit<CharacterDef, 'family' | 'saga' | 'weaponPool' | 'ultimate' | 'unlock' | 'sprite' | 'dodge'> & {
@@ -46,7 +47,13 @@ export const GOKU_VERSIONS: CharacterDef[] = [
     stats: { hp: 120, ki: 100, physical: 100, energy: 100, defense: 10, speed: 100 },
     startingWeapon: 'ki_blast',
     passives: [saiyanBlood],
-    description: 'El Saiyan criado en la Tierra. Equilibrado: Ki a distancia y combos cuerpo a cuerpo.',
+    description: 'El Saiyan criado en la Tierra. Equilibrado. Se transforma en partida (E): Kaioken, SSJ, SSJ2 y SSJ3.',
+    transformations: [
+      form('kaioken', 'Kaioken', 5, 25, 4, 1.3, 0xff3030, undefined, { speedMul: 1.2, defenseMul: 0.9 }),
+      form('ssj', 'Super Saiyan', 12, 55, 3.2, 1.65, 0xffd84a, { hair: '#ffe14d', eye: '#1fa58f' }),
+      form('ssj2', 'Super Saiyan 2', 20, 70, 4.5, 2.1, 0xfff27a, { hair: '#fff27a', eye: '#17c7a8' }, { lightning: true }),
+      form('ssj3', 'Super Saiyan 3', 28, 85, 6, 2.6, 0xffc83a, { hair: '#ffd23a', hairStyle: 'long', eye: '#17c7a8' }, { lightning: true }),
+    ],
   }),
   version({
     id: 'goku_kaioken',

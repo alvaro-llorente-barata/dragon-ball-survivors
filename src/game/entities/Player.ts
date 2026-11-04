@@ -53,6 +53,15 @@ export class Player {
     return this.sprite.y;
   }
 
+  /** Tamaño del personaje (niños 0.8, Broly 1.3, Ozaru 2.2). La caja de colisión se mantiene. */
+  setBaseScale(mult: number): void {
+    this.sprite.setScale(2 * mult);
+    const body = this.sprite.body as Phaser.Physics.Arcade.Body;
+    body.setSize(10 / mult, 7 / mult);
+    body.setOffset(10 - 5 / mult, 23 - 7 / mult);
+    this.aura.setData('mult', mult);
+  }
+
   setTextureKey(key: string): void {
     this.textureKey = key;
     this.sprite.setTexture(key, '0');
@@ -111,7 +120,8 @@ export class Player {
     this.sprite.setDepth(DEPTH.entity + this.sprite.y + 12);
     this.aura.setPosition(this.sprite.x, this.sprite.y - 4).setDepth(this.sprite.depth - 1);
     this.aura.setAlpha(0.55 + 0.25 * Math.sin(now / 90));
-    this.aura.setScale(1.5 + 0.08 * Math.sin(now / 70), 1.6 + 0.1 * Math.sin(now / 55));
+    const m = (this.aura.getData('mult') as number | undefined) ?? 1;
+    this.aura.setScale((1.5 + 0.08 * Math.sin(now / 70)) * m, (1.6 + 0.1 * Math.sin(now / 55)) * m);
     this.shieldImg.setVisible(shield).setPosition(this.sprite.x, this.sprite.y).setDepth(this.sprite.depth + 1);
 
     // Rayos en el aura (Super Saiyan 2).

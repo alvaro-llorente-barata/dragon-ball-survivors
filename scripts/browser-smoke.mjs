@@ -68,6 +68,13 @@ function check(name, ok, detail = '') {
 const clickText = (t) =>
   evaluate(`(() => { const b = [...document.querySelectorAll('button')].find(x => x.textContent.includes(${JSON.stringify(t)})); if (b) b.click(); return !!b; })()`);
 const S = (expr) => evaluate(`(() => { const s = window.__dbs; return ${expr}; })()`);
+/** Cierra cualquier ventana abierta (mejoras sin elegir Vínculo, cofres, vínculos guardados). */
+async function drain() {
+  for (let i = 0; i < 200 && (await S('!!s.activeModal && s.activeModal.type !== "gameover"')); i++) {
+    await S(`(() => { const m = s.activeModal; if (m.type === 'levelup') { const c = m.choices.find((c) => c.kind !== 'link') ?? m.choices[0]; s.chooseUpgrade(c.id); } else s.closeModal(); return 0; })()`);
+    await sleep(60);
+  }
+}
 
 async function main() {
   let target;
@@ -118,6 +125,7 @@ async function main() {
 
   await sleep(6000);
   check('Aparecen enemigos', (await S('s.enemies.count()')) > 0, `activos: ${await S('s.enemies.count()')}`);
+  for (let i = 0; i < 12 && (await S('s.run.kills')) === 0; i++) await sleep(1000);
   const near = await S(`(() => { const p = s.player; return s.enemies.activeEnemies().some(e => Math.hypot(e.x - p.x, e.y - p.y) < 500); })()`);
   check('Los enemigos persiguen al jugador', near);
   check('Ataques automáticos matan enemigos', (await S('s.run.kills')) > 0, `bajas: ${await S('s.run.kills')}`);
@@ -131,13 +139,61 @@ async function main() {
   await shot('03-nivel');
   let guard = 0;
   while ((await evaluate(`document.body.innerText.includes('Elige una mejora')`)) && guard++ < 40) {
-    await key('1', 'Digit1', 49);
-    await sleep(150);
+    await drain();
+    break;
   }
   check('Mejoras aplicadas', (await S('JSON.stringify([s.run.weapons, s.run.passives])')) !== weaponsBefore, await S('JSON.stringify(s.run.weapons)'));
   check('Nivel alto tras EXP', (await S('s.run.level')) >= 10, `nivel ${await S('s.run.level')}`);
 
-  check('Máximo 4 ataques', (await S('Object.keys(s.run.weapons).length')) <= 4, await S('Object.keys(s.run.weapons).length'));
+  check('4 huecos llenos', (await S('s.run.slots.filter(x => x.length).length')) === 4, await S('JSON.stringify(s.run.slots)'));
+  check('Siguen saliendo mejoras con los huecos llenos', await S(`(() => { s.queueLevelUp('t'); const ok = s.activeModal?.type === 'levelup' && s.activeModal.choices.length === 3; return ok; })()`));
+  while ((await evaluate(`document.body.innerText.includes('Elige una mejora')`)) && guard++ < 60) {
+    await drain();
+    break;
+  }
+
+  // Cambio de hueco con la tecla 2
+  await sleep(300);
+  await key('2', 'Digit2', 50);
+  await sleep(300);
+  check('Cambiar de hueco (tecla 2)', (await S('s.run.selected')) === 1);
+  const firedBefore = await S('JSON.stringify([...s.weapons.fired])');
+  await sleep(2500);
+  check('El hueco seleccionado ataca', (await S('JSON.stringify([...s.weapons.fired])')) !== firedBefore, await S('JSON.stringify(s.run.slots[s.run.selected])'));
+
+  // Vínculo de Ki
+  await S(`(s.grantLink('prueba'), 0)`);
+  await sleep(500);
+  check('Ventana de Vínculo de Ki', await evaluate(`document.body.innerText.includes('Vínculo de Ki')`));
+  await shot('03b-vinculo');
+  await evaluate(`(() => { const b = [...document.querySelectorAll('button')].find(x => /^Hueco 1 \\+ Hueco 2/.test(x.textContent)); b?.click(); return !!b; })()`);
+  await sleep(400);
+  check('Vínculo une dos ataques y libera un hueco', await S('s.run.slots[0].length === 2 && s.run.slots[3].length === 0'), await S('JSON.stringify(s.run.slots)'));
+  await key('1', 'Digit1', 49);
+  await sleep(1200);
+  check('Los dos ataques vinculados atacan', await S(`s.run.slots[0].every(id => (s.weapons.fired.get(id) ?? 0) > 0)`), await S('JSON.stringify([...s.weapons.fired])'));
+
+  // Evolución
+  const evoId = await S('s.run.slots[0][0]');
+  await S(`(() => { const id = s.run.slots[0][0]; s.run.weapons[id] = 5; const evo = { ki_blast: 'ki_control' }[id]; return 0; })()`);
+  await S(`(() => { const id = s.run.slots[0][0]; const w = s.weapons; return 0; })()`);
+  await S(`(() => { import('/src/data/attacks/index.ts').then(m => { const id = s.run.slots[0][0]; s.run.passives[m.WEAPONS[id].evolution.passive] = 1; s.queueLevelUp('Evo'); }); return 0; })()`);
+  await sleep(800);
+  check('Carta dorada de evolución', await evaluate(`document.body.innerText.includes('EVOLUCIÓN')`));
+  await shot('03c-evolucion');
+  await key('1', 'Digit1', 49);
+  await sleep(500);
+  check('Ataque evolucionado', await S(`!!s.run.evolved[${JSON.stringify(evoId)}]`), evoId);
+  while ((await evaluate(`document.body.innerText.includes('Elige una mejora')`)) && guard++ < 80) {
+    await drain();
+    break;
+  }
+
+  // Transformación en partida (Goku base: Kaioken)
+  await S('(s.run.ki = 100, 0)');
+  await key('e', 'KeyE', 69);
+  await sleep(500);
+  check('Transformación en partida (E)', (await S('s.run.formId')) === 'kaioken', await S('s.run.formId'));
 
   // Mundo infinito: el jugador viaja lejos y los trozos se cargan y descargan.
   await S(`(() => { s.player.invulnUntil = s.time.now + 600000; return 0; })()`);
@@ -171,13 +227,13 @@ async function main() {
   // Cápsula y objeto
   await S(`(() => { s.player.invulnUntil = s.time.now + 60000; return 0; })()`);
   const coinsBefore = await S('s.run.coins + s.run.xp + s.run.hp + s.run.ki + s.run.tickets');
-  await S(`(() => { const c = s.loot.capsules.find(c => c.alive); s.player.sprite.body.reset(c.img.x, c.img.y); return 0; })()`);
+  const capId = await S(`(() => { const c = s.loot.capsules.find(c => c.alive && c.id); s.player.sprite.body.reset(c.img.x, c.img.y); return c.id; })()`);
   await sleep(500);
   while ((await evaluate(`document.body.innerText.includes('Elige una mejora')`)) && guard++ < 80) {
-    await key('1', 'Digit1', 49);
-    await sleep(150);
+    await drain();
+    break;
   }
-  check('Cápsula recogida', (await S('s.loot.capsules.filter(c => !c.alive).length')) >= 1);
+  check('Cápsula recogida', await S(`s.world.consumed.has(${JSON.stringify(capId)})`), capId);
 
   // Cofre
   await S(`(() => { const c = s.loot.chests.find(c => !c.opened); s.player.sprite.body.reset(c.img.x, c.img.y - 12); return 0; })()`);
@@ -187,8 +243,8 @@ async function main() {
   await clickText('Continuar');
   await sleep(400);
   while ((await evaluate(`document.body.innerText.includes('Elige una mejora')`)) && guard++ < 120) {
-    await key('1', 'Digit1', 49);
-    await sleep(150);
+    await drain();
+    break;
   }
 
   // Jefe (se fuerza Raditz, que tiene dos fases)
@@ -206,6 +262,11 @@ async function main() {
   check('Jefe derrotado', (await S('s.run.bossesDefeated.length')) >= 1, await S('JSON.stringify(s.run.bossesDefeated)'));
   check('Cofre de jefe generado', await S(`s.loot.chests.some(c => !c.opened && (c.rarity === 'epic' || c.rarity === 'rare' || c.rarity === 'legendary'))`));
 
+  // El jefe da un Vínculo de Ki: se guarda para después.
+  check('El jefe da un Vínculo de Ki', (await S('s.run.links')) >= 1 || (await S(`s.activeModal?.type === 'link'`)));
+  await clickText('Guardar para después');
+  await sleep(300);
+  await drain();
   // Pausa
   await key('Escape', 'Escape', 27);
   await sleep(300);
@@ -226,11 +287,11 @@ async function main() {
   await evaluate(`(() => { const m = window.__meta.getState(); m.set({ ...m.meta, tickets: m.meta.tickets + 10 }); return 0; })()`);
   await clickText('Invocaciones');
   await sleep(500);
-  check('Pantalla de invocaciones', await evaluate(`document.body.innerText.includes('Banner')`));
+  check('Pantalla de invocaciones', await evaluate(`document.body.innerText.includes('Máquina de')`));
   const ownedBefore = await evaluate(`window.__meta.getState().meta.unlockedCharacters.length`);
   await clickText('Invocar x10');
   await sleep(400);
-  check('Aparece la Bola de Dragón', await evaluate(`!!document.querySelector('svg[aria-label^="Bola de Dragón"]') && document.body.innerText.includes('brilla')`));
+  check('Aparece la Bola de Dragón', await evaluate(`!!document.querySelector('svg[aria-label^="Bola de Dragón"]') && document.body.innerText.includes('giran')`));
   await shot('08-bola');
   await sleep(2200);
   await shot('09-revelado');
@@ -257,7 +318,7 @@ async function main() {
   await sleep(3500);
   check('Nueva partida tras volver al menú', await S('!!s && s.run.time > 0'));
   if (other) {
-    check(`Juega con ${other} (aura visible)`, (await S('s.char.id')) === other && (await S('s.player.aura.visible')), await S('s.char.name'));
+    check(`Juega con ${other}`, (await S('s.char.id')) === other, await S('s.char.name'));
     await shot('11-otro-personaje');
   }
 

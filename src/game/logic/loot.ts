@@ -106,7 +106,7 @@ export function rollCapsule(kind: CapsuleKind, rng: Rng, minute: number): Capsul
       return { kind: 'reward', reward: { kind: 'xp', amount }, label: `+${amount} EXP` };
     }
     case 'heal':
-      return { kind: 'heal', fraction: 0.3, label: '+30% vida' };
+      return { kind: 'heal', fraction: 0.2, label: '+20% vida' };
     case 'ki':
       return { kind: 'ki', amount: 35, label: '+35 Ki' };
     case 'upgrade':
@@ -127,7 +127,7 @@ export function rollCapsule(kind: CapsuleKind, rng: Rng, minute: number): Capsul
 /** Botín al morir un enemigo normal. */
 export function rollEnemyDrop(rng: Rng, coinChance: number, elite: boolean): { coins: number; item: ItemKind | null; chest: boolean } {
   const coins = rng() < coinChance * (elite ? 6 : 1) ? (elite ? 10 : 1 + Math.floor(rng() * 2)) : 0;
-  const item = rng() < (elite ? 0.25 : 0.006) ? weightedPick(Object.values(ITEMS), (i) => i.weight, rng).kind : null;
+  const item = rng() < (elite ? 0.25 : 0.004) ? weightedPick(Object.values(ITEMS), (i) => i.weight, rng).kind : null;
   const chest = elite && rng() < 0.45;
   return { coins, item, chest };
 }

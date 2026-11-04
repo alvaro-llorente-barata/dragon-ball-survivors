@@ -153,6 +153,26 @@ export function generateCommonTextures(scene: Phaser.Scene): void {
     c.fillStyle = '#d42020';
     c.fillRect(42, 12, 3, 3);
   });
+  canvasTexture(scene, 'disc', 24, 24, (c) => {
+    // Kienzan: disco con borde brillante
+    c.fillStyle = 'rgba(255,255,255,0.35)';
+    c.beginPath();
+    c.ellipse(12, 12, 11, 5, 0, 0, Math.PI * 2);
+    c.fill();
+    c.strokeStyle = 'rgba(255,255,255,1)';
+    c.lineWidth = 2;
+    c.beginPath();
+    c.ellipse(12, 12, 10, 4, 0, 0, Math.PI * 2);
+    c.stroke();
+  });
+  canvasTexture(scene, 'needle', 28, 6, (c) => {
+    const g = c.createLinearGradient(0, 0, 28, 0);
+    g.addColorStop(0, 'rgba(255,255,255,0)');
+    g.addColorStop(0.6, 'rgba(255,255,255,0.8)');
+    g.addColorStop(1, 'rgba(255,255,255,1)');
+    c.fillStyle = g;
+    c.fillRect(0, 1, 28, 4);
+  });
   canvasTexture(scene, 'aura', 48, 64, (c) => {
     const g = c.createRadialGradient(24, 40, 4, 24, 36, 30);
     g.addColorStop(0, 'rgba(255,255,255,0.0)');

@@ -91,7 +91,7 @@ export class BossSystem {
   private spawn(bossId: string): void {
     const def = getBoss(bossId);
     const pt = this.scene.enemies.ringPoint(-40) ?? { x: this.scene.player.x + 300, y: this.scene.player.y };
-    const hp = Math.round(def.hp * bossHpMul(this.scene.run.time, this.loop));
+    const hp = Math.round(def.hp * bossHpMul(this.scene.run.time, this.loop, this.scene.diff));
     const e = this.scene.enemies.spawnBoss(def, pt.x, pt.y, hp);
     if (!e) return;
     this.boss = e;
@@ -103,7 +103,12 @@ export class BossSystem {
     this.dashUntil = 0;
     audio.play('boss');
     this.scene.effects.flash(0xff4a4a, 250);
-    this.scene.toast(`${def.mini ? 'Miniboss' : '¡JEFE!'}: ${def.name}${this.loop > 0 ? ` (poder x${bossHpMul(0, this.loop).toFixed(1)})` : ''}`, '#ff6a6a', true);
+    const final = def.chest === 'divine';
+    this.scene.toast(
+      `${final ? '☠ JEFE DEFINITIVO' : def.mini ? 'Miniboss' : '¡JEFE!'}: ${def.name}${this.loop > 0 ? ` (poder x${Math.pow(1.7, this.loop).toFixed(1)})` : ''}`,
+      final ? '#ff3a3a' : '#ff6a6a',
+      true,
+    );
   }
 
   onBossDamaged(e: Enemy): void {
@@ -138,9 +143,11 @@ export class BossSystem {
     this.scene.run.bossesDefeated.push(def.id);
     this.scene.run.kills += 1;
     // Los jefes dan tickets de invocación (miniboss 1, jefe 2).
-    const tickets = def.mini ? 1 : 2;
+    const tickets = def.chest === 'divine' ? 8 : def.mini ? 1 : 2;
     this.scene.run.tickets += tickets;
     this.scene.effects.floatText(x, y - 60, `+${tickets} 🎫`, '#ffd84a');
+    // Los jefes (no los minibosses) dan un Vínculo de Ki.
+    if (!def.mini) this.scene.grantLink(`${def.name} soltó un Vínculo de Ki`);
     this.scene.loot.spawnChest(x, y, def.chest, false, true);
     for (let i = 0; i < 14; i++) this.scene.loot.dropGem(x + Phaser.Math.Between(-60, 60), y + Phaser.Math.Between(-60, 60), def.mini ? 8 : 20);
     for (let i = 0; i < 8; i++) this.scene.loot.dropGem(x + Phaser.Math.Between(-50, 50), y + Phaser.Math.Between(-50, 50), def.mini ? 5 : 12, true);
@@ -250,6 +257,41 @@ export class BossSystem {
             },
           });
         }, ph.color);
+        break;
+      }
+      case 'spiral': {
+        // Espiral de balas: obliga a moverse en círculo.
+        this.busyUntil = now + 1500;
+        const base = Math.random() * Math.PI * 2;
+        for (let w = 0; w < 6; w++) {
+          this.scene.time.delayedCall(w * 220, () => {
+            if (!b.active) return;
+            for (let i = 0; i < 8; i++) this.scene.enemies.fireBullet(b.x, b.y - 10, base + w * 0.32 + (i / 8) * Math.PI * 2, 190, dmg * 0.45, ph.color, 1.2);
+          });
+        }
+        audio.play('shoot');
+        break;
+      }
+      case 'cross_beam': {
+        // Cuatro rayos en cruz con aviso: hay que meterse entre ellos.
+        this.busyUntil = now + 1500;
+        const rot = Math.random() * Math.PI;
+        const ox = b.x;
+        const oy = b.y;
+        audio.play('warning');
+        for (let i = 0; i < 4; i++) {
+          const angle = rot + (i * Math.PI) / 2;
+          tg.rect(ox, oy, angle, 900, 30, 1100, () => {
+            if (!b.active) return;
+            const beam = this.scene.add.image(ox, oy, 'beam').setOrigin(0, 0.5).setRotation(angle).setTint(ph.color).setBlendMode('ADD').setDepth(DEPTH.effect).setDisplaySize(900, 70);
+            this.scene.tweens.add({ targets: beam, alpha: 0, duration: 380, onComplete: () => beam.destroy() });
+            if (pointInBeam(p.x, p.y, ox, oy, angle, 900, 34)) this.scene.damagePlayer(dmg * 1.6);
+          }, ph.color);
+        }
+        this.scene.time.delayedCall(1100, () => {
+          audio.play('beam');
+          this.scene.cameras.main.shake(220, 0.007);
+        });
         break;
       }
       case 'summon': {

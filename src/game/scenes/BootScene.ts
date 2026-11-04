@@ -27,6 +27,12 @@ export class BootScene extends Phaser.Scene {
     generateCommonTextures(this);
     generateMapTextures(this, map);
     characterTexture(this, `char_${char.id}`, char.sprite);
+    // Sprites de las transformaciones en partida (acumulan cambios de la forma anterior).
+    let spec = char.sprite;
+    for (const f of char.transformations ?? []) {
+      spec = mergeSpec(spec, f.sprite);
+      if (f.sprite) characterTexture(this, `char_${char.id}_${f.id}`, spec);
+    }
     for (const e of Object.values(ENEMIES)) characterTexture(this, `enemy_${e.id}`, e.sprite);
     for (const b of Object.values(BOSSES)) {
       let spec = b.sprite;

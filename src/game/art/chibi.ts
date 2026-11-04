@@ -75,6 +75,73 @@ function drawHair(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir:
       }
       if (dir === 'up') rect(ctx, ox, 6, 5, 8, 4, h);
       return;
+    case 'gohan':
+      // pelo de punta corto con un mechón en la frente
+      rect(ctx, ox, 5, 2, 10, 4, h);
+      rect(ctx, ox, 6, 1, 2, 1, h);
+      rect(ctx, ox, 10, 0, 2, 2, h);
+      rect(ctx, ox, 13, 1, 2, 1, h);
+      if (dir === 'down') rect(ctx, ox, 9, 6, 1, 2, h);
+      if (dir === 'up') rect(ctx, ox, 5, 5, 10, 4, h);
+      if (dir === 'side') rect(ctx, ox, 5, 4, 3, 3, h);
+      rect(ctx, ox, 7, 2, 2, 1, shade(h, 45));
+      return;
+    case 'bowl':
+      // melena lisa con raya (Trunks)
+      rect(ctx, ox, 5, 2, 10, 4, h);
+      rect(ctx, ox, 4, 4, 2, 6, h);
+      rect(ctx, ox, 14, 4, 2, 6, h);
+      if (dir === 'down') {
+        rect(ctx, ox, 6, 5, 3, 2, h);
+        rect(ctx, ox, 11, 5, 3, 2, h);
+      }
+      if (dir === 'up') rect(ctx, ox, 5, 5, 10, 6, h);
+      rect(ctx, ox, 9, 2, 1, 2, shade(h, -40));
+      return;
+    case 'turban':
+      // turbante blanco con banda morada (Piccolo)
+      rect(ctx, ox, 5, 1, 10, 5, h);
+      rect(ctx, ox, 5, 4, 10, 1, '#6a3aa8');
+      rect(ctx, ox, 6, 1, 3, 1, shade(h, 30));
+      return;
+    case 'buu':
+      // antena de goma hacia atrás
+      rect(ctx, ox, 8, 1, 4, 3, h);
+      rect(ctx, ox, dir === 'side' ? 4 : 11, 0, 4, 2, h);
+      rect(ctx, ox, dir === 'side' ? 3 : 14, 1, 2, 2, shade(h, -25));
+      return;
+    case 'crest':
+      // cresta / coraza de cabeza (Cell, Freezer 3ª forma, dragones)
+      rect(ctx, ox, 6, 1, 8, 4, h);
+      rect(ctx, ox, 4, 2, 2, 4, h);
+      rect(ctx, ox, 14, 2, 2, 4, h);
+      rect(ctx, ox, 9, 0, 2, 1, h);
+      rect(ctx, ox, 7, 2, 6, 1, shade(h, 30));
+      return;
+    case 'bob':
+      // media melena (18, Pan, 17)
+      rect(ctx, ox, 5, 2, 10, 4, h);
+      rect(ctx, ox, 4, 4, 2, 7, h);
+      rect(ctx, ox, 14, 4, 2, 7, h);
+      if (dir === 'down') rect(ctx, ox, 6, 5, 8, 1, h);
+      if (dir === 'up') rect(ctx, ox, 5, 5, 10, 7, h);
+      rect(ctx, ox, 6, 2, 3, 1, shade(h, 40));
+      return;
+    case 'wild':
+      // melena salvaje enorme (Broly, Gohan Beast)
+      rect(ctx, ox, 4, 0, 12, 6, h);
+      rect(ctx, ox, 3, 2, 2, 9, h);
+      rect(ctx, ox, 15, 2, 2, 9, h);
+      rect(ctx, ox, 2, 5, 1, 4, h);
+      rect(ctx, ox, 17, 5, 1, 4, h);
+      rect(ctx, ox, 6, 0, 2, 1, shade(h, 40));
+      if (dir === 'up') rect(ctx, ox, 4, 5, 12, 8, h);
+      return;
+    case 'mohawk':
+      rect(ctx, ox, 8, 0, 4, 5, h);
+      rect(ctx, ox, 7, 2, 6, 2, h);
+      rect(ctx, ox, 9, 0, 1, 1, shade(h, 40));
+      return;
     case 'spiky':
     default:
       if (dir === 'side') {
@@ -116,6 +183,27 @@ function drawFrame(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir
   const eye = s.eye ?? '#16161c';
   const top = s.armor ?? s.gi;
   const topD = shade(top, -30);
+  // Complexión: los corpulentos tienen torso y brazos 1 px más anchos por cada lado.
+  const w = s.build === 'bulky' ? 1 : 0;
+
+  // Capa (detrás del cuerpo)
+  if (s.cape) {
+    if (dir === 'up') rect(ctx, ox, 4, 11, 12, 11, s.cape);
+    else if (dir === 'side') rect(ctx, ox, 3, 11, 4, 10, s.cape);
+    else {
+      rect(ctx, ox, 3, 11, 2, 10, s.cape);
+      rect(ctx, ox, 15, 11, 2, 10, s.cape);
+    }
+  }
+  // Halo de ángel
+  if (s.halo) {
+    rect(ctx, ox, 6, 0, 8, 1, '#c8f0ff');
+  }
+  // Espada a la espalda (Trunks, Tapion)
+  if (s.sword && dir !== 'side') {
+    rect(ctx, ox, dir === 'up' ? 12 : 14, 3, 1, 10, '#c8d8e8');
+    rect(ctx, ox, dir === 'up' ? 11 : 13, 9, 3, 1, '#8a5a2a');
+  }
 
   // Cola
   if (s.tail) {
@@ -140,9 +228,16 @@ function drawFrame(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir
   }
 
   // Torso
-  rect(ctx, ox, 6, 12, 8, 6, top);
-  rect(ctx, ox, 6, 16, 8, 1, s.belt);
-  rect(ctx, ox, 6, 17, 8, 1, topD);
+  rect(ctx, ox, 6 - w, 12, 8 + w * 2, 6, top);
+  rect(ctx, ox, 6 - w, 16, 8 + w * 2, 1, s.belt);
+  rect(ctx, ox, 6 - w, 17, 8 + w * 2, 1, topD);
+  // Pectorales marcados en corpulentos sin armadura
+  if (w && !s.armor && dir === 'down') {
+    rect(ctx, ox, 7, 13, 2, 1, shade(top, -25));
+    rect(ctx, ox, 11, 13, 2, 1, shade(top, -25));
+  }
+  // Marca: color (#...) en el pecho, o letra (Majin "M", Gamma 1/2) en la frente
+  if (s.mark?.startsWith('#') && dir === 'down') rect(ctx, ox, 9, 14, 2, 1, s.mark);
   if (!s.armor && dir === 'down') {
     rect(ctx, ox, 9, 12, 2, 2, s.giAccent);
   }
@@ -171,12 +266,13 @@ function drawFrame(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir
     }
   } else {
     const swing = step === 0 ? 0 : 1;
-    rect(ctx, ox, 4, 12, 2, 2, sleeve);
-    rect(ctx, ox, 14, 12, 2, 2, sleeve);
-    rect(ctx, ox, 4, 14 + swing, 2, 2, skin);
-    rect(ctx, ox, 14, 15 - swing, 2, 2, skin);
-    rect(ctx, ox, 4, 15 + swing, 2, 1, s.belt);
-    rect(ctx, ox, 14, 16 - swing, 2, 1, s.belt);
+    const aw = 2 + w;
+    rect(ctx, ox, 4 - w * 2, 12, aw, 2, sleeve);
+    rect(ctx, ox, 14 + w, 12, aw, 2, sleeve);
+    rect(ctx, ox, 4 - w * 2, 14 + swing, aw, 2, skin);
+    rect(ctx, ox, 14 + w, 15 - swing, aw, 2, skin);
+    rect(ctx, ox, 4 - w * 2, 15 + swing, aw, 1, s.belt);
+    rect(ctx, ox, 14 + w, 16 - swing, aw, 1, s.belt);
   }
 
   // Cabeza
@@ -197,6 +293,14 @@ function drawFrame(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir
     }
   }
   if (s.mustache && dir !== 'up') rect(ctx, ox, dir === 'side' ? 11 : 8, 9, dir === 'side' ? 3 : 4, 1, s.mustache);
+  if (s.beard && dir !== 'up') {
+    rect(ctx, ox, dir === 'side' ? 10 : 7, 10, dir === 'side' ? 4 : 6, 3, s.beard);
+    rect(ctx, ox, dir === 'side' ? 11 : 9, 13, 2, 1, s.beard);
+  }
+  if (s.earring && dir !== 'up') {
+    rect(ctx, ox, dir === 'side' ? 8 : 5, 9, 1, 2, s.earring);
+    if (dir === 'down') rect(ctx, ox, 14, 9, 1, 2, s.earring);
+  }
   if (s.antenna) {
     rect(ctx, ox, 8, 1, 1, 3, s.antenna);
     rect(ctx, ox, 11, 1, 1, 3, s.antenna);
@@ -208,6 +312,12 @@ function drawFrame(ctx: CanvasRenderingContext2D, ox: number, s: SpriteSpec, dir
     rect(ctx, ox, 15, 1, 1, 1, s.horns);
   }
   drawHair(ctx, ox, s, dir);
+  // Marca Majin (letra) en la frente, por encima del pelo
+  if (s.mark && !s.mark.startsWith('#') && dir === 'down') {
+    rect(ctx, ox, 8, 5, 1, 2, '#1b1b24');
+    rect(ctx, ox, 11, 5, 1, 2, '#1b1b24');
+    rect(ctx, ox, 9, 6, 2, 1, '#1b1b24');
+  }
 }
 
 /** Contorno oscuro de 1 px y sombra bajo los pies. */

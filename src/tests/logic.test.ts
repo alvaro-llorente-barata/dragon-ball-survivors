@@ -69,22 +69,27 @@ describe('mejoras al subir de nivel', () => {
     const run = newRun();
     const base = computeStats(goku, run, NO_META).energyMul;
     run.passives.power = 3;
-    expect(computeStats(goku, run, NO_META).energyMul).toBeCloseTo(base * 1.3, 5);
+    expect(computeStats(goku, run, NO_META).energyMul).toBeCloseTo(base * 1.24, 5);
   });
-  it('respeta el máximo de ataques equipados', () => {
-    const run = newRun();
-    for (const id of goku.weaponPool.slice(0, MAX_WEAPONS)) run.weapons[id] = 1;
-    expect(candidateUpgrades(run, goku).some((c) => c.kind === 'weapon_new')).toBe(false);
+  it(`el máximo de huecos es ${MAX_WEAPONS}`, () => {
+    expect(MAX_WEAPONS).toBe(4);
+    expect(newRun().slots).toHaveLength(4);
   });
 });
 
-describe('versiones de Goku (sin transformaciones en partida)', () => {
-  it('hay 9 fases, ids únicos y estrellas de 1 a 7', () => {
+describe('personajes', () => {
+  it('Goku tiene versiones de 1 a 7 estrellas', () => {
     const gokus = CHARACTERS.filter((c) => c.family === 'goku');
-    expect(gokus).toHaveLength(9);
-    expect(new Set(gokus.map((c) => c.id)).size).toBe(9);
     expect(new Set(gokus.map((c) => c.stars))).toEqual(new Set([1, 2, 3, 4, 5, 6, 7]));
-    for (const c of gokus) expect(c.weaponPool).toContain(c.startingWeapon);
+  });
+  it('todos los personajes tienen ataques que existen y su ataque inicial en el pool', () => {
+    for (const c of CHARACTERS) {
+      expect(c.weaponPool).toContain(c.startingWeapon);
+      expect(c.weaponPool.length).toBeGreaterThanOrEqual(5);
+      for (const w of [...c.weaponPool, c.ultimate]) expect(WEAPONS[w], `${c.id}: ${w}`).toBeDefined();
+      expect(WEAPONS[c.ultimate].ultimate).toBeDefined();
+      expect(WEAPONS[c.startingWeapon].ultimate).toBeUndefined();
+    }
   });
   it('más estrellas = más poder', () => {
     const base = computeStats(getCharacter('goku'), newRun(), NO_META);
