@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SPRITE_OVERRIDES } from '../../assets/manifest';
+import { REAL_SHEETS } from '../../assets/realSheets';
 import { BOSSES } from '../../data/bosses';
 import { getCharacter } from '../../data/characters';
 import { ENEMIES } from '../../data/enemies';
@@ -17,6 +18,10 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     for (const [key, url] of Object.entries(SPRITE_OVERRIDES)) {
       this.load.spritesheet(key, url, { frameWidth: FRAME_W, frameHeight: FRAME_H });
+    }
+    // Hojas reales de vista lateral (4 fotogramas) para los personajes con arte.
+    for (const [key, s] of Object.entries(REAL_SHEETS)) {
+      this.load.spritesheet(key, s.url, { frameWidth: s.frameW, frameHeight: s.frameH });
     }
   }
 
