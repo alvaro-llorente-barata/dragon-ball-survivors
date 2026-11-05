@@ -8,7 +8,9 @@ import { useMetaStore } from '../../stores/metaStore';
 export function HomePage({ go }: { go: (s: Screen) => void }) {
   const meta = useMetaStore((s) => s.meta);
   const acc = accountLevel(meta.accountXp);
-  const goku = getCharacter('goku');
+  // Muestra el personaje seleccionado; si por algún motivo no existe, cae a Goku.
+  const selId = meta.unlockedCharacters.includes(meta.selectedCharacter) ? meta.selectedCharacter : 'goku';
+  const hero = getCharacter(selId);
 
   return (
     <div className="relative flex min-h-full flex-col items-center justify-center gap-6 overflow-hidden bg-[radial-gradient(ellipse_at_top,#2a3a7a_0%,#0b0f1a_70%)] p-6">
@@ -19,8 +21,9 @@ export function HomePage({ go }: { go: (s: Screen) => void }) {
         <p className="mt-2 text-sm text-slate-300">Fan game gratuito · sobrevive en un mundo infinito, invoca guerreros y vence a los jefes</p>
       </div>
 
-      <div className="relative">
-        <CharacterPreview spec={goku.sprite} textureKey={`char_${goku.id}`} frame={0} scale={7} label="Goku" />
+      <div className="relative flex flex-col items-center gap-1">
+        <CharacterPreview spec={hero.sprite} textureKey={`char_${hero.id}`} frame={0} scale={7} label={hero.name} />
+        <span className="text-sm font-bold text-amber-200">{hero.name}</span>
       </div>
 
       <div className="relative flex w-full max-w-xs flex-col gap-3">
