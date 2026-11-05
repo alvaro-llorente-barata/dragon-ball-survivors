@@ -27,10 +27,23 @@ export function TouchControls() {
   }, []);
 
   const show = setting === 'on' || (setting === 'auto' && coarse);
+
+  // Si la zona desaparece mientras se arrastra (se abre una ventana, pausa...),
+  // no llega el pointerup: soltamos el stick a mano para que no se quede pillado.
+  useEffect(() => {
+    if (!show || modal) {
+      pointerId.current = null;
+      virtualInput.x = 0;
+      virtualInput.y = 0;
+      setStick(null);
+    }
+  }, [show, modal]);
+
   if (!show || modal) return null;
 
   const down = (e: RPointerEvent<HTMLDivElement>) => {
-    if (pointerId.current !== null) return;
+    // Si no hay joystick activo, cualquier toque previo colgado no bloquea uno nuevo.
+    if (pointerId.current !== null && stick) return;
     pointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     setStick({ ox: e.clientX, oy: e.clientY, x: 0, y: 0 });
@@ -67,6 +80,7 @@ export function TouchControls() {
         onPointerMove={move}
         onPointerUp={up}
         onPointerCancel={up}
+        onLostPointerCapture={up}
         aria-label="Zona del joystick"
       >
         {stick && (
