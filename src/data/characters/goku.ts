@@ -136,7 +136,7 @@ export const GOKU_VERSIONS: CharacterDef[] = [
   }),
   version({
     id: 'goku_ui_sign',
-    name: 'Goku Ultra Instinto Señal',
+    name: 'Goku Ultra Instinto sin dominar',
     saga: 'super',
     stars: 6,
     stats: { hp: 180, ki: 160, physical: 200, energy: 200, defense: 20, speed: 135 },
