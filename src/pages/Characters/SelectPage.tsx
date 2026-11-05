@@ -55,6 +55,15 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
     go('game');
   };
 
+  // Fija el personaje (y el mapa) como seleccionado sin entrar a la partida.
+  const justSelect = () => {
+    if (!owned) return;
+    select(char.id, mapId);
+    setMsg(`${char.name} seleccionado. Aparecerá en el menú.`);
+  };
+
+  const isSelected = meta.selectedCharacter === char.id;
+
   const power = 1 + (prog.level - 1) * CHAR_POWER_PER_LEVEL;
   const statRows: [string, number][] = [
     ['Vida', Math.round(char.stats.hp * power)],
@@ -293,9 +302,17 @@ export function SelectPage({ go }: { go: (s: Screen) => void }) {
         </div>
       </Panel>
 
-      <Button className="self-center px-12 text-xl" disabled={!owned} onClick={start}>
-        {owned ? `¡A luchar con ${char.name}!` : 'Personaje bloqueado'}
-      </Button>
+      <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <Button variant="ghost" className="px-8 text-lg" disabled={!owned || isSelected} onClick={justSelect}>
+            {isSelected ? '✓ Seleccionado' : 'Seleccionar personaje'}
+          </Button>
+          <Button className="px-10 text-xl" disabled={!owned} onClick={start}>
+            {owned ? `¡A luchar con ${char.name}!` : 'Personaje bloqueado'}
+          </Button>
+        </div>
+        {owned && msg && <p className="text-sm font-bold text-emerald-300">{msg}</p>}
+      </div>
       <p className="text-center text-xs text-slate-400">WASD: mover · 1-4/Tab: hueco · Espacio: esquivar · Q: definitivo · E: transformarse · V: Vínculo · Esc: pausa</p>
     </div>
   );
