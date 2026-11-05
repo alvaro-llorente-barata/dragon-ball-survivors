@@ -28,6 +28,7 @@ const SIZES: Record<string, [number, number]> = {
   char_android_18: [37, 46],
   char_bardock: [41, 53],
   char_beerus: [51, 58],
+  char_black_freezer: [67, 62],
   char_broly: [44, 62],
   char_broly_ssj: [61, 73],
   char_cabba: [34, 46],
