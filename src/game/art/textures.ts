@@ -18,7 +18,7 @@ import { realSheet } from '../../assets/realSheets';
 export function characterTextureReal(scene: Phaser.Scene, key: string): boolean {
   const sheet = realSheet(key);
   if (!sheet) return false;
-  if (!scene.textures.exists(key)) return false; // debe haberse precargado en BootScene
+  if (!scene.textures.exists(key)) return false; // debe haberse precargado en BootScene (sheetLoadList)
   const mk = (name: string, frames: number[], rate: number, repeat: number) => {
     const animKey = `${key}_${name}`;
     if (scene.anims.exists(animKey)) return;
@@ -32,6 +32,8 @@ export function characterTextureReal(scene: Phaser.Scene, key: string): boolean 
   mk('idle', [0], 1, -1);
   mk('walk', [0, 1, 0, 2], 8, -1);
   mk('atk', [3], 1, 0);
+  // Enemigos y jefes reproducen `_side` (andar animado), igual que los dibujos chibi.
+  mk('side', [0, 1, 0, 2], 8, -1);
   return true;
 }
 

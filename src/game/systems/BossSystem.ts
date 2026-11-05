@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { displayScale, realSheet } from '../../assets/realSheets';
 import { getBoss } from '../../data/bosses';
 import { CHEST_NAMES } from '../../data/items';
 import type { BossDef, BossPattern } from '../../data/types';
@@ -125,9 +126,9 @@ export class BossSystem {
       this.nextPatternAt = this.scene.time.now + 1400;
       this.patternIdx = 0;
       e.textureBase = `boss_${def.id}_${next}`;
-      e.setTexture(e.textureBase, '4');
+      e.setTexture(e.textureBase, realSheet(e.textureBase) ? 0 : '4');
       e.play(`${e.textureBase}_side`, true);
-      e.setScale(ph.scale ?? def.scale);
+      e.setScale((ph.scale ?? def.scale) * displayScale(e.textureBase));
       this.scene.effects.explosion(e.x, e.y, 120, ph.color, 0.008);
       this.scene.effects.flash(0xffffff, 300);
       audio.play('transform');

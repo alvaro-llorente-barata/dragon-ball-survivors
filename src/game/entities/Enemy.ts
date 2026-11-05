@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { BossDef, EnemyDef } from '../../data/types';
+import { displayScale, realSheet } from '../../assets/realSheets';
 
 let nextUid = 1;
 
@@ -44,7 +45,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.boss = null;
     this.textureBase = textureKey;
     this.enableBody(true, x, y, true, true);
-    this.setTexture(textureKey, '4');
+    const sheet = realSheet(textureKey);
+    this.setTexture(textureKey, sheet ? 0 : '4');
     this.play(`${textureKey}_side`, true);
     this.hp = hp;
     this.maxHp = hp;
@@ -66,10 +68,17 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.baseTint = elite ? 0xffb0ff : 0xffffff;
     this.clearTint();
     if (elite) this.setTint(this.baseTint);
-    this.setScale(def.scale * (elite ? 1.35 : 1));
+    this.setScale(def.scale * (elite ? 1.35 : 1) * displayScale(textureKey));
     this.setAlpha(1);
-    this.arcadeBody.setSize(12, 10);
-    this.arcadeBody.setOffset(4, 13);
+    if (sheet) {
+      // Hoja real: la caja de colisión sigue los pies, con la misma proporción que el chibi (24 px).
+      const f = sheet.frameH / 24;
+      this.arcadeBody.setSize(12 * f, 10 * f);
+      this.arcadeBody.setOffset(sheet.frameW / 2 - 6 * f, sheet.frameH - 10 * f);
+    } else {
+      this.arcadeBody.setSize(12, 10);
+      this.arcadeBody.setOffset(4, 13);
+    }
   }
 
   deactivate(): void {

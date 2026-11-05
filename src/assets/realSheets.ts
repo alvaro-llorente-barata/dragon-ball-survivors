@@ -7,6 +7,8 @@
  * Generadas con scripts/auto_sprites.py a partir del material del usuario.
  * Los personajes que no aparezcan aquí siguen usando el chibi generado por código.
  */
+import { BOSSES } from '../data/bosses';
+
 export interface RealSheet {
   /** ruta relativa servible (bajo /public) */
   url: string;
@@ -112,6 +114,50 @@ export const REAL_SHEETS: Record<string, RealSheet> = Object.fromEntries(
   ]),
 );
 
+/**
+ * Enemigos y jefes que reutilizan la hoja real de un personaje con el mismo
+ * aspecto. Clave de textura del enemigo/jefe -> clave de la hoja (char_<id>).
+ * Los jefes no necesitan alias por fase: se resuelven con el id del jefe.
+ */
+export const SHEET_ALIASES: Record<string, string> = {
+  enemy_saibaman: 'char_saibaman_p',
+  boss_raditz: 'char_raditz',
+  boss_vegeta: 'char_vegeta',
+  boss_freezer: 'char_freezer_1',
+  boss_cell: 'char_cell_perfect',
+  boss_majin_buu: 'char_majin_buu',
+  boss_jiren_full: 'char_jiren',
+  boss_broly_fp: 'char_broly_ssj',
+};
+
+/** Hoja real que usa una clave de textura (directa, alias, o fase de jefe `boss_<id>_<n>`). */
+export function sheetFor(key: string): string | undefined {
+  if (REAL_SHEETS[key]) return key;
+  if (SHEET_ALIASES[key]) return SHEET_ALIASES[key];
+  const m = /^(boss_.+)_\d+$/.exec(key);
+  return m ? SHEET_ALIASES[m[1]] : undefined;
+}
+
 export function realSheet(key: string): RealSheet | undefined {
-  return REAL_SHEETS[key];
+  const s = sheetFor(key);
+  return s ? REAL_SHEETS[s] : undefined;
+}
+
+/** Escala que iguala la altura en pantalla del dibujo chibi (24 px) a la de la hoja real. */
+export function displayScale(key: string): number {
+  const s = realSheet(key);
+  return s ? 24 / s.frameH : 1;
+}
+
+/** Todas las texturas que hay que cargar: hojas de personajes, alias de enemigos y fases de jefes. */
+export function sheetLoadList(): { key: string; sheet: RealSheet }[] {
+  const keys = new Set<string>(Object.keys(REAL_SHEETS));
+  for (const k of Object.keys(SHEET_ALIASES)) keys.add(k);
+  for (const b of Object.values(BOSSES)) b.phases.forEach((_, i) => keys.add(`boss_${b.id}_${i}`));
+  const out: { key: string; sheet: RealSheet }[] = [];
+  for (const key of keys) {
+    const sheet = realSheet(key);
+    if (sheet) out.push({ key, sheet });
+  }
+  return out;
 }
