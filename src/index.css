@@ -80,6 +80,12 @@ canvas {
 }
 .float-y { animation: float-y 2.4s ease-in-out infinite; }
 
+@keyframes db-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.db-float { animation: db-float 3.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
 @media (prefers-reduced-motion: reduce) {
-  .pop-in, .toast-in, .shine, .ball-shake, .ball-flash, .float-y { animation: none; }
+  .pop-in, .toast-in, .shine, .ball-shake, .ball-flash, .float-y, .db-float { animation: none; }
 }

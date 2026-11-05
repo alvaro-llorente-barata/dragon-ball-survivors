@@ -1,5 +1,6 @@
 import type { Screen } from '../../App';
 import { Button, CharacterPreview, Panel, formatTime } from '../../components/ui';
+import { MenuBackground } from '../../components/ui/MenuBackground';
 import { getCharacter } from '../../data/characters';
 import { audio } from '../../services/audioService';
 import { accountLevel } from '../../services/saveService/meta';
@@ -13,8 +14,10 @@ export function HomePage({ go }: { go: (s: Screen) => void }) {
   const hero = getCharacter(selId);
 
   return (
-    <div className="relative flex min-h-full flex-col items-center justify-center gap-6 overflow-hidden bg-[radial-gradient(ellipse_at_top,#2a3a7a_0%,#0b0f1a_70%)] p-6">
-      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(#ffd84a_1px,transparent_1px)] [background-size:28px_28px]" />
+    <div className="relative flex min-h-full flex-col items-center justify-center gap-6 overflow-hidden bg-[#1a1030] p-6">
+      <MenuBackground />
+      {/* Velo para que el texto y los paneles se lean sobre el paisaje. */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/40 via-black/10 to-black/55" />
       <div className="relative text-center">
         <h1 className="title-text text-5xl sm:text-7xl">DRAGON BALL</h1>
         <h2 className="title-text text-4xl sm:text-6xl">SURVIVORS</h2>
