@@ -9,6 +9,15 @@ export function SettingsPage({ go }: { go: (s: Screen) => void }) {
   const s = meta.settings;
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [code, setCode] = useState('');
+  const [codeMsg, setCodeMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const redeem = useMetaStore((st) => st.redeem);
+
+  const onRedeem = () => {
+    const r = redeem(code);
+    setCodeMsg({ ok: r.ok, text: r.message });
+    if (r.ok) setCode('');
+  };
 
   const onImport = async (file: File | undefined) => {
     if (!file) return;
@@ -90,6 +99,33 @@ export function SettingsPage({ go }: { go: (s: Screen) => void }) {
           <span className="text-sm">Pausar al cambiar de ventana</span>
           <input type="checkbox" checked={s.pauseOnBlur} onChange={(e) => updateSettings({ pauseOnBlur: e.target.checked })} className="h-5 w-5 accent-amber-400" />
         </label>
+      </Panel>
+
+      <Panel className="space-y-3">
+        <h2 className="font-bold">Canjear código</h2>
+        <form
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            onRedeem();
+          }}
+        >
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Escribe el código"
+            aria-label="Código"
+            className="min-w-0 flex-1 rounded-lg bg-panel2 px-3 py-2 text-sm"
+          />
+          <Button type="submit" variant="ghost" disabled={!code.trim()}>
+            Canjear
+          </Button>
+        </form>
+        {codeMsg && (
+          <p className={`text-sm font-bold ${codeMsg.ok ? 'text-emerald-300' : 'text-red-300'}`} role="status">
+            {codeMsg.text}
+          </p>
+        )}
       </Panel>
 
       <Panel className="space-y-3">

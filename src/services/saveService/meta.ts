@@ -47,6 +47,8 @@ export interface MetaState {
   gacha: GachaState;
   /** sagas con la colección completa ya premiada */
   claimedSagas: string[];
+  /** códigos ya canjeados (en mayúsculas), para que no se repitan */
+  redeemedCodes: string[];
   favorites: string[];
   difficulty: Difficulty;
   stats: MetaStats;
@@ -105,6 +107,7 @@ export function defaultMeta(): MetaState {
     characters: { goku: { level: 1, shards: 0 } },
     gacha: { pulls: 0, sinceEpic: 0, sinceMythic: 0, banners: {} },
     claimedSagas: [],
+    redeemedCodes: [],
     favorites: [],
     difficulty: 'normal',
     stats: { runs: 0, totalKills: 0, bestTime: 0, chestsOpened: 0, totalCoins: 0, deaths: 0 },
@@ -191,6 +194,7 @@ export function parseMeta(raw: unknown): MetaState {
       };
     })(),
     claimedSagas: strArr(r.claimedSagas, []),
+    redeemedCodes: strArr(r.redeemedCodes, []),
     favorites: strArr(r.favorites, []).filter((id) => unlockedCharacters.includes(id)),
     difficulty: r.difficulty === 'hard' || r.difficulty === 'nightmare' ? r.difficulty : 'normal',
     stats: {

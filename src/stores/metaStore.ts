@@ -5,6 +5,7 @@ import { loadMeta, saveMeta, importJson, downloadJson } from '../services/saveSe
 import { defaultMeta, type Difficulty, type MetaState, type Settings } from '../services/saveService/meta';
 import { audio } from '../services/audioService';
 import { claimSagaRewards, levelUpCharacter, summon, type SummonBatch } from '../services/gachaService';
+import { redeemCode } from '../services/codeService';
 import type { Saga } from '../data/types';
 
 interface MetaStore {
@@ -24,6 +25,8 @@ interface MetaStore {
   exportSave(): void;
   importSave(text: string): string | null;
   resetSave(): void;
+  /** Canjea un código; devuelve el mensaje para la persona. */
+  redeem(code: string): { ok: boolean; message: string };
 }
 
 function persist(meta: MetaState) {
@@ -98,6 +101,11 @@ export const useMetaStore = create<MetaStore>((set, get) => ({
     }
   },
   resetSave: () => get().set(defaultMeta()),
+  redeem: (code) => {
+    const r = redeemCode(get().meta, code);
+    if (r.ok) get().set(r.meta);
+    return { ok: r.ok, message: r.message };
+  },
 }));
 
 // Solo en desarrollo: acceso para pruebas automatizadas en navegador.
