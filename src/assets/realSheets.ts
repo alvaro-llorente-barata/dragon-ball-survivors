@@ -19,6 +19,9 @@ export interface RealSheet {
 
 export const REAL_SHEET_FRAMES = 4;
 
+/** Súbelo cuando cambies sprites, para que los navegadores no usen la copia guardada. */
+export const SHEET_VERSION = 2;
+
 /**
  * clave de textura (char_<id> / char_<id>_<forma>) -> tamaño de fotograma.
  * Estos valores DEBEN coincidir con el tamaño real de cada PNG (ancho/4 × alto).
@@ -240,7 +243,7 @@ const SIZES: Record<string, [number, number]> = {
 export const REAL_SHEETS: Record<string, RealSheet> = Object.fromEntries(
   Object.entries(SIZES).map(([key, [w, h]]) => [
     key,
-    { url: `assets/characters/${key}.png`, frameW: w, frameH: h, frames: REAL_SHEET_FRAMES },
+    { url: `assets/characters/${key}.png?v=${SHEET_VERSION}`, frameW: w, frameH: h, frames: REAL_SHEET_FRAMES },
   ]),
 );
 
