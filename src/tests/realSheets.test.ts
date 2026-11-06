@@ -42,19 +42,21 @@ describe('alias de enemigos y jefes', () => {
     expect(sheetFor('boss_jiren_full_1')).toBe('char_jiren');
   });
   it('un enemigo o jefe sin arte real no tiene hoja', () => {
-    expect(sheetFor('boss_ginyu_0')).toBeUndefined();
-    expect(sheetFor('enemy_cell_jr')).toBeUndefined();
+    expect(sheetFor('boss_inexistente_0')).toBeUndefined();
+    expect(sheetFor('enemy_inexistente')).toBeUndefined();
   });
   it('la escala iguala la altura chibi (24 px)', () => {
     const s = realSheet('boss_vegeta_0');
     expect(s).toBeDefined();
     expect(displayScale('boss_vegeta_0')).toBeCloseTo(24 / (s?.frameH ?? 24));
-    expect(displayScale('boss_ginyu_0')).toBe(1);
+    expect(displayScale('boss_inexistente_0')).toBe(1);
   });
   it('la carga incluye alias y fases de jefe, y todas apuntan a PNG existentes', () => {
     const list = sheetLoadList();
     expect(list.some((x) => x.key === 'enemy_saibaman')).toBe(true);
     expect(list.some((x) => x.key === 'boss_raditz_0')).toBe(true);
-    expect(list.some((x) => x.key === 'boss_ginyu_0')).toBe(false);
+    expect(list.some((x) => x.key === 'boss_ginyu_0')).toBe(true);
+    expect(list.some((x) => x.key === 'enemy_cell_jr')).toBe(true);
+    expect(list.some((x) => x.key === 'boss_inexistente_0')).toBe(false);
   });
 });
