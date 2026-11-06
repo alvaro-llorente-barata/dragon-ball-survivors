@@ -120,7 +120,7 @@ const SIZES: Record<string, [number, number]> = {
   char_goku_ssj3: [43, 53],
   char_goku_ssj4: [47, 50],
   char_goku_ssj_freezer: [41, 52],
-  char_goku_ui: [36, 59],
+  char_goku_ui: [54, 62],
   char_goku_ui_sign: [55, 60],
   char_golden_freezer: [40, 48],
   char_gomah: [43, 62],
