@@ -206,7 +206,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private applyZoom(): void {
-    const zoom = Phaser.Math.Clamp(Math.min(this.scale.width, this.scale.height) / 680, 0.7, 1.6);
+    // Zoom más cercano: en una pantalla de 705 px de alto pasa de ~1.0 a ~1.3.
+  const zoom = Phaser.Math.Clamp(Math.min(this.scale.width, this.scale.height) / 540, 0.7, 2.0);
     this.cameras.main.setZoom(zoom);
   }
 
