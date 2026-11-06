@@ -25,6 +25,12 @@ export const REAL_SHEET_FRAMES = 4;
  * Se generan desde los propios PNG; no editar a mano (ver scripts/auto_sprites.py).
  */
 const SIZES: Record<string, [number, number]> = {
+  boss_dodoria: [67, 62],
+  boss_general_blue: [61, 62],
+  boss_ginyu: [67, 62],
+  boss_nappa: [67, 62],
+  boss_tao_pai_pai: [61, 62],
+  boss_zarbon: [69, 62],
   char_android_13: [40, 62],
   char_android_16: [54, 60],
   char_android_17: [41, 47],
@@ -216,6 +222,19 @@ const SIZES: Record<string, [number, number]> = {
   char_zangya: [36, 62],
   char_zarbon: [46, 62],
   char_zarbon_monster: [53, 62],
+  enemy_android_unit: [64, 62],
+  enemy_babidi_mage: [66, 62],
+  enemy_babidi_minion: [63, 62],
+  enemy_cell_jr: [60, 62],
+  enemy_freezer_gunner: [68, 62],
+  enemy_freezer_soldier: [60, 62],
+  enemy_frieza_elite: [62, 62],
+  enemy_majin_guardian: [58, 62],
+  enemy_red_ribbon: [59, 62],
+  enemy_red_ribbon_robot: [63, 62],
+  enemy_saibaman_kamikaze: [69, 62],
+  enemy_saibaman_planter: [60, 62],
+  enemy_saiyan_scout: [62, 62],
 };
 
 export const REAL_SHEETS: Record<string, RealSheet> = Object.fromEntries(
@@ -239,6 +258,12 @@ export const SHEET_ALIASES: Record<string, string> = {
   boss_majin_buu: 'char_majin_buu',
   boss_jiren_full: 'char_jiren',
   boss_broly_fp: 'char_broly_ssj',
+  boss_general_blue: 'boss_general_blue',
+  boss_tao_pai_pai: 'boss_tao_pai_pai',
+  boss_nappa: 'boss_nappa',
+  boss_dodoria: 'boss_dodoria',
+  boss_zarbon: 'boss_zarbon',
+  boss_ginyu: 'boss_ginyu',
 };
 
 /** Hoja real que usa una clave de textura (directa, alias, o fase de jefe `boss_<id>_<n>`). */
