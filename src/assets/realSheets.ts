@@ -20,7 +20,7 @@ export interface RealSheet {
 export const REAL_SHEET_FRAMES = 4;
 
 /** Súbelo cuando cambies sprites, para que los navegadores no usen la copia guardada. */
-export const SHEET_VERSION = 2;
+export const SHEET_VERSION = 3;
 
 /**
  * clave de textura (char_<id> / char_<id>_<forma>) -> tamaño de fotograma.
@@ -129,7 +129,7 @@ const SIZES: Record<string, [number, number]> = {
   char_goku_ssj3: [43, 53],
   char_goku_ssj4: [47, 50],
   char_goku_ssj_freezer: [41, 52],
-  char_goku_ui: [50, 62],
+  char_goku_ui: [54, 62],
   char_goku_ui_sign: [55, 60],
   char_golden_freezer: [40, 48],
   char_gomah: [43, 62],
